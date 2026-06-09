@@ -1611,8 +1611,11 @@
   }
 
   // ── API Config ──────────────────────────────────────────────────
-  const API_URL = "http://localhost:5000/api/chat";
-  const API_BASE = window.location.origin.startsWith('file://') ? 'http://localhost:5000' : '';
+  const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:5000' 
+      : window.location.origin;
+  const API_URL = `${API_BASE_URL}/api/chat`;
+  const API_BASE = API_BASE_URL;
 
   // ── DOM Refs ────────────────────────────────────────────────────
   const messagesEl = document.getElementById("chat-messages");
@@ -1870,7 +1873,7 @@
         signinSubmit.disabled = true;
         signinSubmit.textContent = "Registering...";
 
-        const res = await fetch(`${API_BASE}/api/auth/signup`, {
+        const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -1986,7 +1989,7 @@
       signinSubmit.disabled = true;
       signinSubmit.textContent = "Signing In...";
 
-      const res = await fetch(`${API_BASE}/api/auth/signin`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId: id, password: loginPassword }),
@@ -2370,7 +2373,7 @@
       return;
     }
 
-    fetch(`${API_BASE}/api/conversations/toggle-pin`, {
+    fetch(`${API_BASE_URL}/api/conversations/toggle-pin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: id, isPinned: nextPinned })
@@ -2431,7 +2434,7 @@
         return;
       }
 
-      fetch(`${API_BASE}/api/conversations/toggle-pin`, {
+      fetch(`${API_BASE_URL}/api/conversations/toggle-pin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ conversationId: id, isPinned: !currentlyPinned })
@@ -2467,7 +2470,7 @@
     if (!clickedId) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/history/${window.currentStudentId}?conversationId=${clickedId}`);
+      const res = await fetch(`${API_BASE_URL}/api/history/${window.currentStudentId}?conversationId=${clickedId}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const logs = await res.json();
 
@@ -2512,7 +2515,7 @@
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/student/tickets/${window.currentStudentId}`);
+      const res = await fetch(`${API_BASE_URL}/api/student/tickets/${window.currentStudentId}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const data = await res.json();
       const tickets = data.tickets || [];
@@ -2589,7 +2592,7 @@
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/conversations/${window.currentStudentId}`);
+      const res = await fetch(`${API_BASE_URL}/api/conversations/${window.currentStudentId}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const data = await res.json();
       renderHistory(data);
@@ -2704,7 +2707,7 @@
         btn.disabled = true;
         btn.textContent = "Submitting...";
 
-        const res = await fetch("http://localhost:5000/api/tickets/submit", {
+        const res = await fetch(`${API_BASE_URL}/api/tickets/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2808,7 +2811,7 @@
         return;
       }
 
-      fetch(`${API_BASE}/api/conversations/delete`, {
+      fetch(`${API_BASE_URL}/api/conversations/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId: id })

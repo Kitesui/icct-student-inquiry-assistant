@@ -1671,7 +1671,10 @@
        ========================================================================== */ -->
   <script>
     // Set up API Base URL dynamically to support both localhost, IP address access, and local file access
-    const API_BASE = window.location.origin.startsWith('file://') ? 'http://localhost:5000' : '';
+    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:5000' 
+        : window.location.origin;
+    const API_BASE = API_BASE_URL;
 
     // Global references for chart instances to dynamically update them
     let categoriesChartInstance = null;
@@ -1701,7 +1704,7 @@
     // Pull calculations metrics & populate dashboard cards/charts
     async function syncDashboardData() {
       try {
-        const response = await fetch(`${API_BASE}/api/admin/stats`);
+        const response = await fetch(`${API_BASE_URL}/api/admin/stats`);
         if (!response.ok) {
           throw new Error(`Analytics server responded with HTTP status ${response.status}`);
         }
@@ -1862,7 +1865,7 @@
     // Pull support tickets list and write layout rows down table grid
     async function fetchTickets() {
       try {
-        const response = await fetch(`${API_BASE}/api/admin/tickets`);
+        const response = await fetch(`${API_BASE_URL}/api/admin/tickets`);
         if (!response.ok) {
           throw new Error(`Tickets server responded with HTTP status ${response.status}`);
         }
@@ -2015,7 +2018,7 @@
       const adminReplyText = replyBox ? replyBox.value.trim() : '';
 
       try {
-        const response = await fetch(`${API_BASE}/api/admin/tickets/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/admin/tickets/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -2135,7 +2138,7 @@
       `;
 
       try {
-        const response = await fetch(`${API_BASE}/api/admin/knowledge`, {
+        const response = await fetch(`${API_BASE_URL}/api/admin/knowledge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ category, title, content })
@@ -2215,7 +2218,7 @@
       const countBadge = document.getElementById('kb-record-count');
 
       try {
-        const response = await fetch(`${API_BASE}/api/admin/knowledge`);
+        const response = await fetch(`${API_BASE_URL}/api/admin/knowledge`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const records = await response.json();
@@ -2414,7 +2417,7 @@
         confirmBtn.innerHTML = 'Deleting…';
 
         try {
-          const response = await fetch(`${API_BASE}/api/admin/knowledge/${deleteTargetId}`, {
+          const response = await fetch(`${API_BASE_URL}/api/admin/knowledge/${deleteTargetId}`, {
             method: 'DELETE'
           });
 
@@ -2488,7 +2491,7 @@
 
         try {
           // Gathers edited values and runs update call to Supabase (via PUT endpoint wrapper)
-          const response = await fetch(`${API_BASE}/api/admin/knowledge/${id}`, {
+          const response = await fetch(`${API_BASE_URL}/api/admin/knowledge/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json'
@@ -2502,7 +2505,7 @@
             showToast('Handbook policy updated successfully!');
             
             // Trigger background call to server re-vectorization route so the Gemini AI brain stays synced
-            fetch(`${API_BASE}/api/admin/knowledge/${id}/revectorize`, { method: 'POST' })
+            fetch(`${API_BASE_URL}/api/admin/knowledge/${id}/revectorize`, { method: 'POST' })
               .then(res => res.json())
               .then(vectorData => {
                 if (vectorData.success) {
