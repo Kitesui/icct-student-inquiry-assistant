@@ -7,7 +7,10 @@
 //  Usage:  node import-vector-data.js
 // ============================================================================
 
-import "dotenv/config";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+require('dotenv').config();
+
 import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -15,13 +18,22 @@ import { createClient } from "@supabase/supabase-js";
 
 // ── Initialise Clients (reuses the same .env keys as server.js) ─────────────
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Missing cloud connection keys inside process.env!");
+    process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // ── Embedding model name ────────────────────────────────────────────────────
 const EMBEDDING_MODEL = "gemini-embedding-001";
 
 // ── CSV file path ───────────────────────────────────────────────────────────
-const CSV_PATH = path.resolve("school_knowledge.csv");
+const CSV_PATH = path.resolve("data/school_knowledge.csv");
 
 // ============================================================================
 //  CSV Parser — handles quoted fields that may contain commas & newlines
@@ -213,6 +225,7 @@ async function main() {
   // ── Summary ───────────────────────────────────────────────────────────
   console.log("\n══════════════════════════════════════════════════════════");
   console.log(`  ✅ Success: ${successCount}  |  ❌ Failed: ${errorCount}  |  Total: ${rows.length}`);
+  console.log(`  🎉 Successfully wrote a total of ${successCount} rows to the cloud database.`);
   console.log("══════════════════════════════════════════════════════════\n");
 }
 
