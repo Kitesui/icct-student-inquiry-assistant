@@ -1,0 +1,2846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICCT Student Inquiry — AI-Powered Support Assistant</title>
+  <meta name="description" content="AI-driven chatbot for ICCT Colleges providing automated student inquiry responses and ticketing services." />
+
+  <!-- Google Fonts — Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ================================================================
+       RESET & TOKENS
+       ================================================================ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --blue-500: #2563eb;
+      --blue-600: #1d4ed8;
+      --blue-100: #dbeafe;
+      --blue-50:  #eff6ff;
+      --green-500:#22c55e;
+      --yellow-100:#fef9c3;
+      --yellow-700:#a16207;
+      --green-100:#dcfce7;
+      --green-700:#15803d;
+      --red-100:  #fee2e2;
+      --red-500:  #ef4444;
+      --red-700:  #b91c1c;
+      --red-800:  #991b1b;
+
+      --bg-page:  #f9fafb;
+      --bg-white: #ffffff;
+      --border:   #e5e7eb;
+      --border-light: #f3f4f6;
+
+      --text-primary:   #111827;
+      --text-secondary: #6b7280;
+      --text-tertiary:  #9ca3af;
+
+      --bot-bubble-bg:    #111827;
+      --bot-bubble-color: #ffffff;
+
+      --sidebar-w: 74px;
+      --header-h:  70px;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.07);
+      --transition: .2s ease;
+    }
+
+    body.dark {
+      --bg-page:  #0b0f19;
+      --bg-white: #111827;
+      --border:   #1f2937;
+      --border-light: #111827;
+
+      --text-primary:   #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-tertiary:  #6b7280;
+
+      --bot-bubble-bg:    #1f2937;
+      --bot-bubble-color: #ffffff;
+
+      --blue-50:  #1e3a8a;
+      --blue-100: #1e3a8a;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ================================================================
+       LAYOUT SHELL — Sidebar + Main
+       ================================================================ */
+    #app-shell {
+      display: flex;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ================================================================
+       SIDEBAR
+       ================================================================ */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      width: 100%;
+    }
+
+    .nav-group-bottom {
+      margin-top: auto;
+      padding-bottom: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      width: 62px;
+      padding: 10px 0 7px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      color: var(--text-secondary);
+      font-family: inherit;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      background: var(--blue-50);
+      color: var(--blue-500);
+    }
+
+    .nav-item.active {
+      background: var(--blue-500);
+      color: #fff;
+    }
+
+    .nav-item.active:hover {
+      background: var(--blue-600);
+    }
+
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      white-space: nowrap;
+    }
+
+    /* Sign In special color */
+    .nav-item.sign-in { color: var(--green-500); }
+    .nav-item.sign-in:hover { background: #f0fdf4; color: #16a34a; }
+
+    /* ================================================================
+       MAIN CONTENT AREA
+       ================================================================ */
+    #main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    /* ── Top Header Bar ──────────────────────────────────────────── */
+    #top-header {
+      display: flex;
+      align-items: center;
+      height: var(--header-h);
+      padding: 0 28px;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 14px;
+    }
+
+    .header-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .header-logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--blue-500);
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .header-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--blue-500);
+    }
+
+    .header-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .status-dot-green {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green-500);
+    }
+
+    /* ── Page Content Container ──────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      overflow-y: auto;
+      display: none;          /* all pages hidden by default */
+      flex-direction: column;
+    }
+
+    .page-content.active {
+      display: flex;
+    }
+
+    /* ================================================================
+       PAGE: CHAT
+       ================================================================ */
+    #page-chat {
+      position: relative;
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-messages::-webkit-scrollbar { width: 5px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,.1); border-radius: 10px; }
+
+    /* ── Chat Bubbles ────────────────────────────────────────────── */
+    .msg-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 75%;
+      animation: fadeIn .3s ease both;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .msg-row.bot {
+      align-self: flex-start;
+    }
+
+    .bot-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--blue-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .bot-avatar svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: var(--blue-500);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .msg-bubble {
+      padding: 12px 18px;
+      font-size: 14px;
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    .msg-row.user .msg-bubble {
+      background: var(--blue-500);
+      color: #fff;
+      border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+    }
+
+    .msg-row.bot .msg-bubble {
+      background: var(--bot-bubble-bg);
+      color: var(--bot-bubble-color);
+      border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+    }
+
+    .msg-row.error .msg-bubble {
+      background: #fef2f2;
+      color: var(--red-700);
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+    }
+
+    /* Bubble markdown-like elements styling */
+    .msg-bubble ul, .msg-bubble ol {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    .msg-bubble ul {
+      list-style-type: disc;
+    }
+    .msg-bubble ol {
+      list-style-type: decimal;
+    }
+    .msg-bubble li {
+      margin-bottom: 4px;
+    }
+    .msg-bubble li:last-child {
+      margin-bottom: 0;
+    }
+    .msg-bubble h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    /* ── Ticket Tracking Center ───────────────────────────────────── */
+    .ticket-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: transform var(--transition), box-shadow var(--transition);
+      text-align: left;
+    }
+    
+    .ticket-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .ticket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-bottom: 1.5px solid var(--border-light);
+      padding-bottom: 12px;
+    }
+
+    .ticket-id-date {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+    }
+
+    .ticket-id {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--blue-500);
+      letter-spacing: 0.5px;
+    }
+
+    .ticket-date {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .ticket-status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-pending {
+      background: #fef3c7;
+      color: #d97706;
+      border: 1px solid #fde68a;
+    }
+
+    body.dark .badge-pending {
+      background: #78350f;
+      color: #fde68a;
+      border: 1px solid #92400e;
+    }
+
+    .badge-resolved {
+      background: #dcfce7;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    body.dark .badge-resolved {
+      background: #064e3b;
+      color: #bbf7d0;
+      border: 1px solid #065f46;
+    }
+
+    .ticket-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .ticket-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-tertiary);
+    }
+
+    .ticket-inquiry {
+      font-size: 14.5px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .admin-response-box {
+      margin-top: 6px;
+      background: var(--blue-50);
+      border-left: 4px solid var(--blue-500);
+      border-radius: var(--radius-md);
+      padding: 18px 22px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    .admin-response-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--blue-500);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .admin-response-content {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .admin-response-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--blue-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    body.dark .admin-response-title {
+      color: #93c5fd;
+    }
+
+    .admin-response-text {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    /* ── Typing Indicator ────────────────────────────────────────── */
+    .typing-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      align-self: flex-start;
+      animation: fadeIn .25s ease both;
+    }
+
+    .typing-dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 16px 22px;
+      background: var(--bot-bubble-bg);
+      border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+    }
+
+    .typing-dot {
+      width: 7px;
+      height: 7px;
+      background: rgba(255,255,255,.5);
+      border-radius: 50%;
+      animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: .15s; }
+    .typing-dot:nth-child(3) { animation-delay: .3s; }
+
+    @keyframes dotBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+      30%           { transform: translateY(-6px); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Chat Input Bar ──────────────────────────────────────────── */
+    #chat-input-bar {
+      padding: 14px 28px 8px;
+      flex-shrink: 0;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #chat-input {
+      flex: 1;
+      height: 48px;
+      padding: 0 20px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-white);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-full);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    #chat-input::placeholder { color: var(--text-tertiary); }
+
+    #chat-input:focus {
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+    }
+
+    #send-btn {
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 50%;
+      background: var(--blue-500);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+
+    #send-btn:hover:not(:disabled) {
+      background: var(--blue-600);
+      transform: scale(1.04);
+    }
+
+    #send-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    #send-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .chat-footer-text {
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      padding: 8px 0 12px;
+    }
+
+    .chat-footer-text a {
+      color: var(--blue-500);
+      text-decoration: none;
+    }
+
+    /* ================================================================
+       PAGE: TICKETS
+       ================================================================ */
+    .page-section {
+      padding: 28px;
+    }
+
+    .page-heading {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+    }
+
+    /* ── Ticket / History Cards ───────────────────────────────────── */
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .card-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      background: var(--bg-white);
+      transition: var(--transition);
+    }
+
+    .card-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+    .card-item:last-child  { border-bottom: 1px solid var(--border); border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+    .card-item:only-child  { border-radius: var(--radius-sm); border-bottom: 1px solid var(--border); }
+
+    .card-item:hover { background: var(--bg-page); }
+
+    .history-actions {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-in-out;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .history-session-item:hover .history-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #history-list .msg-row {
+      animation: none;
+    }
+
+    .card-info h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .card-meta {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .card-meta span + span::before {
+      content: '';
+      display: inline;
+    }
+
+    .card-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-open       { background: var(--yellow-100); color: var(--yellow-700); }
+    .badge-progress   { background: var(--blue-100); color: var(--blue-600); }
+    .badge-resolved   { background: var(--green-100); color: var(--green-700); }
+
+    .card-date {
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    .login-required-link {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 8px 22px;
+      background: var(--blue-500);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-full);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .login-required-link:hover {
+      background: var(--blue-600);
+      transform: translateY(-1px);
+    }
+
+    /* ================================================================
+       PAGE: PROFILE
+       ================================================================ */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--blue-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .profile-avatar svg {
+      width: 34px;
+      height: 34px;
+      stroke: var(--blue-500);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .profile-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .profile-email {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .profile-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .field-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      max-width: 420px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+
+    .field-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ================================================================
+       PAGE: SETTINGS
+       ================================================================ */
+    .setting-group {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      max-width: 420px;
+    }
+
+    .setting-group h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+
+    .setting-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .setting-group input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue-500);
+      cursor: pointer;
+    }
+
+    .setting-group select {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-white);
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .setting-group select:focus {
+      border-color: var(--blue-500);
+    }
+
+    /* ================================================================
+       MOBILE SIDEBAR — Hamburger
+       ================================================================ */
+    #mobile-toggle {
+      display: none;
+      position: fixed;
+      top: 11px !important;
+      bottom: auto !important;
+      left: 12px !important;
+      z-index: 100;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: var(--blue-500);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.3);
+      z-index: 999 !important;
+    }
+
+    @media (max-width: 640px) {
+      #sidebar {
+        position: fixed;
+        left: 0; top: 0; bottom: 0;
+        z-index: 1000 !important;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        box-shadow: var(--shadow-md);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      #sidebar-overlay.open {
+        display: block;
+      }
+
+      #mobile-toggle {
+        display: flex;
+        position: absolute !important;
+        top: 12px !important;
+        left: 16px !important;
+        z-index: 50 !important;
+      }
+
+      #top-header {
+        padding-left: 76px !important;
+        align-items: center !important;
+      }
+      .page-section { padding: 20px 16px; }
+      #chat-messages { padding: 16px; }
+      #chat-input-bar { padding: 10px 16px 6px; }
+      .msg-row { max-width: 90%; }
+      .header-title {
+        font-size: 16px;
+        line-height: 1.2 !important;
+      }
+      .header-subtitle {
+        line-height: 1.2 !important;
+      }
+    }
+
+    /* ================================================================
+       SIGN-IN MODAL
+       ================================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 380px;
+      max-width: 92vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,.15);
+      animation: fadeIn .25s ease both;
+    }
+
+    .modal-box h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .modal-box .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .form-field,
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-field label,
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      height: 42px;
+      padding: 0 14px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+    }
+
+    /* High-contrast and dark mode adjustments for Sign-In Modal */
+    #signin-modal .form-field input,
+    #signin-modal .form-field select,
+    #signin-modal .form-group input,
+    #signin-modal .form-group select {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+    }
+
+    #signin-modal .form-field input::placeholder,
+    #signin-modal .form-group input::placeholder {
+      color: #0f172a !important;
+      opacity: 0.6;
+      font-weight: 700 !important;
+    }
+
+    body.dark #signin-modal .modal-box {
+      background-color: #1e293b !important;
+      border: 1px solid #334155 !important;
+    }
+
+    body.dark #signin-modal .modal-box h2,
+    body.dark #signin-modal .modal-box .subtitle,
+    body.dark #signin-modal .form-field label {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    .btn-primary {
+      width: 100%;
+      height: 44px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--blue-500);
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover { background: var(--blue-600); }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      line-height: 1;
+    }
+
+    .modal-close:hover { color: var(--text-primary); }
+
+    /* ================================================================
+       STUDENT CHAT DELETION MODAL
+       ================================================================ */
+    #student-delete-modal {
+      z-index: 9999;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+    }
+
+    .student-delete-card {
+      background-color: #ffffff;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 420px;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      animation: fadeIn .25s ease both;
+    }
+
+    .student-delete-icon {
+      color: var(--red-500);
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .student-delete-icon svg {
+      width: 28px;
+      height: 28px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .student-delete-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+
+    .student-delete-desc {
+      font-size: 13.5px;
+      color: #475569;
+      line-height: 1.5;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .student-delete-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-student-delete {
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: inherit;
+      flex: 1;
+    }
+
+    .btn-student-delete.btn-student-cancel {
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+    }
+
+    .btn-student-delete.btn-student-cancel:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .btn-student-delete.btn-student-confirm {
+      background: var(--red-500);
+      color: #ffffff;
+    }
+
+    .btn-student-delete.btn-student-confirm:hover {
+      background: var(--red-800);
+      transform: scale(1.02);
+    }
+
+    /* ================================================================
+       CONVERSATION HISTORY MOBILE RESPONSIVE OVERRIDES
+       ================================================================ */
+    @media (max-width: 768px) {
+      /* Force desktop pin/trash icons to hide completely */
+      #history-list .history-actions {
+        display: none !important;
+      }
+
+      /* Mobile 3-dot trigger button */
+      .mobile-menu-dots {
+        display: block !important;
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 8px;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+      }
+
+      /* Dropdown container */
+      .history-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 12px;
+        top: 80%;
+        background-color: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 99;
+        min-width: 150px;
+      }
+
+      body.dark .history-dropdown-menu {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+      }
+
+      /* Dropdown rows */
+      .history-dropdown-menu .dropdown-row {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        transition: background-color var(--transition);
+        text-align: left;
+      }
+
+      body.dark .history-dropdown-menu .dropdown-row {
+        color: #ffffff !important;
+      }
+
+      .history-dropdown-menu .dropdown-row:hover {
+        background-color: var(--blue-50);
+      }
+
+      body.dark .history-dropdown-menu .dropdown-row:hover {
+        background-color: #334155 !important;
+      }
+      
+      /* Make room on the right side of the card so text doesn't overlap the dots */
+      #history-list .card-right {
+        padding-right: 32px;
+      }
+    }
+
+    /* By default on desktop, hide the mobile dots and dropdown */
+    .mobile-menu-dots {
+      display: none;
+    }
+    .history-dropdown-menu {
+      display: none;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<!-- ================================================================
+     APP SHELL
+     ================================================================ -->
+<div id="app-shell">
+
+  <!-- ── Left Sidebar ────────────────────────────────────────────── -->
+  <nav id="sidebar">
+    <div class="nav-group">
+
+      <button class="nav-item active" data-page="chat" id="nav-chat">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </span>
+        <span class="nav-label">Chat</span>
+      </button>
+
+      <!-- Divider line -->
+      <div id="new-chat-divider" style="width: 36px; height: 1px; background: var(--border); margin: 6px 0; display: none;"></div>
+
+      <button class="nav-item" id="btn-new-chat" style="color: var(--blue-500); border: 1.5px dashed var(--blue-500); border-radius: var(--radius-md); margin-top: 4px; margin-bottom: 8px; display: none;">
+        <span class="nav-icon" style="font-size: 14px; font-weight: bold; line-height: 1;">➕</span>
+        <span class="nav-label" style="font-size: 9px; font-weight: bold; white-space: nowrap;">New Chat</span>
+      </button>
+
+      <button class="nav-item" data-page="tickets" id="nav-tickets">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M16 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </span>
+        <span class="nav-label">Tickets</span>
+      </button>
+
+      <button class="nav-item" data-page="history" id="nav-history">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <span class="nav-label">History</span>
+      </button>
+
+      <button class="nav-item" data-page="profile" id="nav-profile" style="display:none;">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span class="nav-label">Profile</span>
+      </button>
+
+      <button class="nav-item" data-page="settings" id="nav-settings">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </span>
+        <span class="nav-label">Settings</span>
+      </button>
+
+    </div>
+
+    <div class="nav-group-bottom">
+      <button class="nav-item sign-in" id="nav-signin">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </span>
+        <span class="nav-label">Sign In</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Sidebar mobile overlay -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- ── Main Area ───────────────────────────────────────────────── -->
+  <div id="main-area">
+
+    <!-- Top Header (persistent across all pages) -->
+    <header id="top-header">
+      <!-- Logo placeholder removed per user request -->
+      <div class="header-text">
+        <span class="header-title">ICCT Student Inquiry</span>
+        <span class="header-subtitle">AI-Powered Support Assistant</span>
+      </div>
+      <div class="header-status">
+        <div class="status-dot-green"></div>
+        Online
+      </div>
+    </header>
+
+    <!-- ============================================================
+         PAGE: Chat
+         ============================================================ -->
+    <div class="page-content active" id="page-chat">
+      <div id="chat-messages">
+        <!-- Welcome bot message -->
+        <div class="msg-row bot" id="welcome-msg">
+          <div class="bot-avatar">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <div class="msg-bubble">Hello! Welcome to ICCT Student Inquiry Assistant. How may I help you today?</div>
+        </div>
+      </div>
+
+      <div id="chat-input-bar">
+        <div class="input-row">
+          <input type="text" id="chat-input" placeholder="Type your inquiry here..." autocomplete="off" aria-label="Type your message" />
+          <button id="send-btn" aria-label="Send message" title="Send">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+        <div class="chat-footer-text">Powered by <a href="#">AI Knowledge Base</a> &amp; Ticketing System</div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE: Tickets
+         ============================================================ -->
+    <div class="page-content" id="tickets-panel">
+      <div class="page-section">
+        <h1 class="page-heading">Student Ticket Tracking Center</h1>
+        <div id="tickets-login-required" class="empty-state">
+          <div class="empty-state-icon">🔒</div>
+          <p>Please sign in to view your support tickets.</p>
+          <button class="login-required-link" id="tickets-signin-btn">Sign In</button>
+        </div>
+        <div class="tickets-container" id="tickets-list" style="display:none;">
+          <!-- Populated dynamically by loadStudentTickets() -->
+        </div>
+        <div class="empty-state" id="tickets-empty" style="display:none;">
+          <div class="empty-state-icon">📋</div>
+          <p>No support tickets yet. Tickets are created when UniBot can't find an answer.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE: History
+         ============================================================ -->
+    <div class="page-content" id="page-history">
+      <div class="page-section">
+        <h1 class="page-heading">Conversation History</h1>
+        <div id="history-login-required" class="empty-state">
+          <div class="empty-state-icon">🔒</div>
+          <p>Please sign in to view your conversation history.</p>
+          <button class="login-required-link" id="history-signin-btn">Sign In</button>
+        </div>
+        <div class="card-list" id="history-list" style="display:none;">
+          <!-- Populated by JS -->
+        </div>
+        <div class="empty-state" id="history-empty" style="display:none;">
+          <div class="empty-state-icon">💬</div>
+          <p>No conversations yet. Start chatting with UniBot!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE: Profile
+         ============================================================ -->
+    <div class="page-content" id="page-profile">
+      <div class="page-section">
+        <h1 class="page-heading">My Profile</h1>
+        <div class="profile-header">
+          <div class="profile-avatar">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <div class="profile-name" id="profile-display-name">Student Name</div>
+            <div class="profile-email" id="profile-display-email">student@icct.edu</div>
+            <div class="profile-meta"><span id="student-academic-meta">Loading details...</span></div>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">Student ID</div>
+          <div class="field-value" id="profile-display-id">2026-12345</div>
+        </div>
+        <div class="field-card">
+          <div class="field-label">Program</div>
+          <div class="field-value" id="profile-box-course">Bachelor of Science in Information Technology</div>
+        </div>
+        <div class="field-card">
+          <div class="field-label">Year Level</div>
+          <div class="field-value" id="profile-box-year">3rd Year</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE: Settings
+         ============================================================ -->
+    <div class="page-content" id="page-settings">
+      <div class="page-section">
+        <h1 class="page-heading">Settings</h1>
+
+        <div class="setting-group">
+          <h3>Notifications</h3>
+          <label>
+            <input type="checkbox" id="setting-email-notif" checked />
+            Email notifications
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <h3>Language</h3>
+          <select id="setting-language">
+            <option value="en" selected>English</option>
+            <option value="fil">Filipino</option>
+            <option value="taglish">Taglish</option>
+          </select>
+        </div>
+
+        <div class="setting-group">
+          <h3>Theme</h3>
+          <select id="setting-theme">
+            <option value="light" selected>Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-area -->
+</div><!-- /app-shell -->
+
+<!-- Mobile hamburger button -->
+<button id="mobile-toggle" aria-label="Toggle menu">☰</button>
+
+<!-- ================================================================
+     SIGN IN MODAL
+     ================================================================ -->
+<div class="modal-overlay" id="signin-modal">
+  <div class="modal-box" style="position:relative;">
+    <button class="modal-close" id="signin-close">&times;</button>
+    
+    <h2>Sign In</h2>
+    <p class="subtitle" id="signin-subtitle">Enter your ICCT credentials to begin.</p>
+
+    <!-- Unified Input Fields -->
+    <div class="form-field">
+      <label for="signin-id">ID Number</label>
+      <input type="text" id="signin-id" placeholder="e.g. CA202412345 or ADM202400001" />
+    </div>
+    <div class="form-field" id="signin-email-field" style="display: none;">
+      <label for="signin-email">Email Address</label>
+      <input type="email" id="signin-email" placeholder="e.g. user@icct.edu.ph" />
+    </div>
+
+    <!-- Login Password Field -->
+    <div class="form-group">
+        <label style="color: #ffffff !important;">Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password" style="color: #0f172a !important; background-color: #ffffff !important;" required>
+    </div>
+
+    <!-- Hidden Signup Extra Fields -->
+    <div id="signup-extra-fields" style="display: none; flex-direction: column; gap: 14px; margin-bottom: 14px;">
+      <div class="form-field" style="margin-bottom: 0;">
+        <label for="reg-course">Course</label>
+        <input type="text" id="reg-course" placeholder="e.g., BSIT, BSCS, BSHM, BSA" required />
+      </div>
+      <div class="form-field" style="margin-bottom: 0;">
+        <label for="reg-year">Year Level</label>
+        <select id="reg-year">
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+        </select>
+      </div>
+      <div class="form-field" style="margin-bottom: 0;">
+        <label for="reg-password">Password</label>
+        <input type="password" id="reg-password" placeholder="Create account password" />
+      </div>
+    </div>
+
+    <button class="btn-primary" id="signin-submit">Sign In</button>
+    <a href="#" id="auth-toggle-link" style="text-align: center; display: block; margin-top: 16px; font-size: 13px; color: var(--blue-500); text-decoration: none; font-weight: 600;">Don't have an account? Sign Up</a>
+    <div id="signin-error" style="color: #ef4444; font-size: 13.5px; margin-top: 12px; font-weight: 500; display: none; text-align: center;"></div>
+    <div id="reg-error-msg" style="color: #ef4444; font-size: 13.5px; margin-top: 12px; font-weight: 500; display: none; text-align: center;"></div>
+  </div>
+</div>
+
+
+
+<!-- Student Chat Deletion Confirmation Modal -->
+<div id="student-delete-modal" class="modal-overlay" style="display: none;">
+  <div class="student-delete-card">
+    <div class="student-delete-icon">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <h2 class="student-delete-title">Delete Conversation History?</h2>
+    <p class="student-delete-desc">This action will permanently erase this chat thread history from your history panel. This action cannot be undone.</p>
+    <div class="student-delete-actions">
+      <button id="cancel-student-delete" class="btn-student-delete btn-student-cancel">Keep Conversation</button>
+      <button id="confirm-student-delete" class="btn-student-delete btn-student-confirm">Delete Chat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script>
+(function () {
+  "use strict";
+
+  // ── UUID Fallback Helper for local/unsecured environments (file:// etc) ──
+  function generateUUID() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    // Fallback standard RFC4122 v4 UUID generator
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  // ── API Config ──────────────────────────────────────────────────
+  const API_URL = "http://localhost:5000/api/chat";
+  const API_BASE = window.location.origin.startsWith('file://') ? 'http://localhost:5000' : '';
+
+  // ── DOM Refs ────────────────────────────────────────────────────
+  const messagesEl = document.getElementById("chat-messages");
+  const inputEl    = document.getElementById("chat-input");
+  const sendBtn    = document.getElementById("send-btn");
+  const sidebar    = document.getElementById("sidebar");
+  const overlay    = document.getElementById("sidebar-overlay");
+  const mobileBtn  = document.getElementById("mobile-toggle");
+
+  const signinModal  = document.getElementById("signin-modal");
+  const signinBtn    = document.getElementById("nav-signin");
+  const signinClose  = document.getElementById("signin-close");
+  const signinSubmit = document.getElementById("signin-submit");
+  const navProfile   = document.getElementById("nav-profile");
+
+  const navChat      = document.getElementById("nav-chat");
+  const navTickets   = document.getElementById("nav-tickets");
+  const navHistory   = document.getElementById("nav-history");
+  const navSettings  = document.getElementById("nav-settings");
+
+  // ── State ───────────────────────────────────────────────────────
+  const chatHistory   = [];   // { role, text }
+  const ticketsData   = [];   // { title, id, date, status }
+  const sessionsData  = [];   // { title, count, date }
+  let isWaiting       = false;
+  let currentSession  = null;
+  let ticketCounter   = 0;
+  let studentChatIdToDelete = null;
+
+  // App State Engine: Generate a fresh session ID on page load
+  window.currentConversationId = generateUUID();
+  window.isHistoryPreview = false;
+
+  // ================================================================
+  //  NAVIGATION — Page Switching
+  // ================================================================
+  const navItems = document.querySelectorAll(".nav-item[data-page]");
+  const pages    = document.querySelectorAll(".page-content");
+
+  function switchPage(pageId) {
+    const panels = {
+      chat: "page-chat",
+      tickets: "tickets-panel",
+      history: "page-history",
+      profile: "page-profile",
+      settings: "page-settings"
+    };
+
+    Object.keys(panels).forEach(key => {
+      const el = document.getElementById(panels[key]);
+      if (el) {
+        if (key === pageId) {
+          el.style.display = "flex";
+          el.classList.add("active");
+        } else {
+          el.style.display = "none";
+          el.classList.remove("active");
+        }
+      }
+    });
+
+    // Sync sidebar active highlight
+    const navIds = {
+      chat: "nav-chat",
+      tickets: "nav-tickets",
+      history: "nav-history",
+      profile: "nav-profile",
+      settings: "nav-settings"
+    };
+
+    Object.keys(navIds).forEach(key => {
+      const el = document.getElementById(navIds[key]);
+      if (el) {
+        if (key === pageId) {
+          el.classList.add("active");
+        } else {
+          el.classList.remove("active");
+        }
+      }
+    });
+
+    // Close mobile sidebar
+    sidebar.classList.remove("open");
+    overlay.classList.remove("open");
+  }
+
+  navItems.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pageId = btn.dataset.page;
+      switchPage(pageId);
+      if (pageId === "tickets") {
+        loadStudentTickets();
+      } else if (pageId === "history") {
+        fetchHistoryLogs();
+      }
+    });
+  });
+
+  // Mobile sidebar
+  mobileBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+    overlay.classList.toggle("open");
+  });
+  overlay.addEventListener("click", () => {
+    sidebar.classList.remove("open");
+    overlay.classList.remove("open");
+  });
+
+  // Ensure that clicking ANY nav-item inside the sidebar collapses the sidebar
+  document.querySelectorAll("#sidebar .nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("open");
+    });
+  });
+
+  // ================================================================
+  //  SIGN IN / SIGN OUT
+  // ================================================================
+  let isSignedIn     = false;
+  window.currentStudentId = undefined;
+  let authState = "login"; // "login" or "signup"
+
+  function openSigninModal() {
+    // Reset state to login
+    authState = "login";
+    const signupExtraFields = document.getElementById("signup-extra-fields");
+    if (signupExtraFields) signupExtraFields.style.display = "none";
+    const signinEmailField = document.getElementById("signin-email-field");
+    if (signinEmailField) signinEmailField.style.display = "none";
+    const loginPasswordEl = document.getElementById("login-password");
+    if (loginPasswordEl) {
+      const formGroup = loginPasswordEl.closest(".form-group");
+      if (formGroup) formGroup.style.display = "block";
+    }
+    const signinTitle = signinModal.querySelector("h2");
+    if (signinTitle) signinTitle.textContent = "Sign In";
+    const signinSubtitle = document.getElementById("signin-subtitle");
+    if (signinSubtitle) signinSubtitle.textContent = "Enter your ICCT credentials to begin.";
+    if (signinSubmit) signinSubmit.textContent = "Sign In";
+    const authToggleLink = document.getElementById("auth-toggle-link");
+    if (authToggleLink) authToggleLink.textContent = "Don't have an account? Sign Up";
+    if (signinError) signinError.style.display = "none";
+
+    signinModal.style.display = "";
+    signinModal.classList.add("open");
+  }
+
+  // Wire auth toggle link state change
+  setTimeout(() => {
+    const authToggleLink = document.getElementById("auth-toggle-link");
+    if (authToggleLink) {
+      authToggleLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const signupExtraFields = document.getElementById("signup-extra-fields");
+        const signinTitle = signinModal.querySelector("h2");
+        const signinSubtitle = document.getElementById("signin-subtitle");
+
+        if (authState === "login") {
+          authState = "signup";
+          if (signinTitle) signinTitle.textContent = "Create Student Account";
+          if (signinSubtitle) signinSubtitle.textContent = "Enter your ICCT details to register.";
+          if (signinSubmit) signinSubmit.textContent = "Register & Begin";
+          if (signupExtraFields) signupExtraFields.style.display = "flex";
+          const signinEmailField = document.getElementById("signin-email-field");
+          if (signinEmailField) signinEmailField.style.display = "block";
+          const loginPasswordEl = document.getElementById("login-password");
+          if (loginPasswordEl) {
+            const formGroup = loginPasswordEl.closest(".form-group");
+            if (formGroup) formGroup.style.display = "none";
+          }
+          authToggleLink.textContent = "Already have an account? Sign In";
+        } else {
+          authState = "login";
+          if (signinTitle) signinTitle.textContent = "Sign In";
+          if (signinSubtitle) signinSubtitle.textContent = "Enter your ICCT credentials to begin.";
+          if (signinSubmit) signinSubmit.textContent = "Sign In";
+          if (signupExtraFields) signupExtraFields.style.display = "none";
+          const signinEmailField = document.getElementById("signin-email-field");
+          if (signinEmailField) signinEmailField.style.display = "none";
+          const loginPasswordEl = document.getElementById("login-password");
+          if (loginPasswordEl) {
+            const formGroup = loginPasswordEl.closest(".form-group");
+            if (formGroup) formGroup.style.display = "block";
+          }
+          authToggleLink.textContent = "Don't have an account? Sign Up";
+        }
+      });
+    }
+  }, 0);
+
+  signinBtn.addEventListener("click", () => {
+    if (isSignedIn) {
+      // ── Sign Out ──
+      isSignedIn = false;
+      window.currentStudentId = undefined;
+      navProfile.style.display = "none";
+      signinBtn.querySelector(".nav-label").textContent = "Sign In";
+      signinBtn.classList.remove("sign-in");
+      signinBtn.classList.add("sign-in");
+      const newChatBtn = document.getElementById("btn-new-chat");
+      if (newChatBtn) {
+        newChatBtn.style.display = "none";
+      }
+      const newChatDivider = document.getElementById("new-chat-divider");
+      if (newChatDivider) {
+        newChatDivider.style.display = "none";
+      }
+      // If currently on profile page, go back to chat
+      switchPage("chat");
+      // Re-render tickets & history to show login-required state
+      loadStudentTickets();
+      renderHistory([]);
+      // Reset profile fields
+      document.getElementById("profile-display-id").textContent = "—";
+      document.getElementById("profile-display-email").textContent = "—";
+      document.getElementById("profile-display-name").textContent = "Student Name";
+      document.getElementById("student-academic-meta").textContent = "Loading details...";
+      if (document.getElementById("profile-box-course")) {
+        document.getElementById("profile-box-course").textContent = "—";
+      }
+      if (document.getElementById("profile-box-year")) {
+        document.getElementById("profile-box-year").textContent = "—";
+      }
+    } else {
+      openSigninModal();
+    }
+  });
+
+  signinClose.addEventListener("click", () => signinModal.classList.remove("open"));
+  signinModal.addEventListener("click", (e) => {
+    if (e.target === signinModal) signinModal.classList.remove("open");
+  });
+
+  const signinError = document.getElementById("signin-error");
+
+  signinSubmit.addEventListener("click", async () => {
+    signinError.style.display = "none";
+
+    const id    = document.getElementById("signin-id").value.trim();
+    const email = document.getElementById("signin-email").value.trim();
+
+    if (authState === "signup") {
+      const course = document.getElementById("reg-course").value;
+      const year = document.getElementById("reg-year").value;
+      const password = document.getElementById("reg-password").value.trim();
+
+      if (!id || !email || !course || !year || !password) {
+        signinError.textContent = "Please fill in all registration fields.";
+        signinError.style.display = "block";
+        return;
+      }
+
+      try {
+        signinSubmit.disabled = true;
+        signinSubmit.textContent = "Registering...";
+
+        const res = await fetch(`${API_BASE}/api/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            studentId: id, 
+            email: email, 
+            course: course, 
+            yearLevel: year, 
+            password: password 
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Registration failed.");
+        }
+
+        // ── Sign In Student ──
+        isSignedIn = true;
+        
+        const userSessionData = data.profile || {};
+
+        // Cache dynamically to local session variables
+        sessionStorage.setItem("student_id", userSessionData.student_id || id);
+        sessionStorage.setItem("email", userSessionData.email || email);
+        sessionStorage.setItem("course", userSessionData.course || course);
+        sessionStorage.setItem("year_level", userSessionData.year_level || year);
+
+        window.currentStudentId = userSessionData.student_id || id;
+        window.currentStudentEmail = userSessionData.email || email;
+        window.currentStudentCourse = userSessionData.course || course;
+        window.currentStudentYearLevel = userSessionData.year_level || year;
+
+        if (!window.currentConversationId) {
+          window.currentConversationId = generateUUID();
+        }
+        const newChatBtn = document.getElementById("btn-new-chat");
+        if (newChatBtn) {
+          newChatBtn.style.display = "flex";
+        }
+        const newChatDivider = document.getElementById("new-chat-divider");
+        if (newChatDivider) {
+          newChatDivider.style.display = "block";
+        }
+
+        // Show Profile nav item
+        navProfile.style.display = "";
+
+        // Update profile page
+        document.getElementById("profile-display-id").textContent = id;
+        document.getElementById("profile-display-email").textContent = userSessionData.email || email;
+        document.getElementById("profile-display-name").textContent = id;
+
+        const profileMeta = document.getElementById('student-academic-meta');
+        if (profileMeta && typeof userSessionData !== 'undefined') {
+            const y = userSessionData.year_level || 'Regular';
+            const program = userSessionData.course || 'ICCT';
+            profileMeta.innerText = `${y} ${program} Student`;
+        }
+        if (document.getElementById('profile-box-course')) {
+            document.getElementById('profile-box-course').innerText = userSessionData.course || 'N/A';
+        }
+        if (document.getElementById('profile-box-year')) {
+            document.getElementById('profile-box-year').innerText = userSessionData.year_level || 'N/A';
+        }
+
+        // Change button to Sign Out
+        signinBtn.querySelector(".nav-label").textContent = "Sign Out";
+
+        // 1. DISMISS THE AUTHFRAME
+        signinModal.classList.remove("open");
+        signinModal.style.display = "none";
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+
+        // 2. CLEAN VIEW CONTROLS AND SYNC SIDEBAR HIGHLIGHTS
+        switchPage("chat");
+
+        // Clear input fields
+        document.getElementById("signin-id").value = "";
+        document.getElementById("signin-email").value = "";
+        document.getElementById("reg-password").value = "";
+        if (loginPasswordEl) loginPasswordEl.value = "";
+
+        // Re-render tickets & history to unlock content
+        loadStudentTickets();
+        fetchHistoryLogs();
+
+      } catch (err) {
+        console.error("Supabase Signup Error Detailing:", err.message || err);
+        const regErrorMsg = document.getElementById('reg-error-msg');
+        if (regErrorMsg) {
+          regErrorMsg.innerText = "Failed: " + (err.message || err);
+          regErrorMsg.style.display = "block";
+        }
+      } finally {
+        signinSubmit.disabled = false;
+        signinSubmit.textContent = "Register & Begin";
+      }
+      return;
+    }
+
+    const loginPasswordEl = document.getElementById("login-password");
+    const loginPassword = loginPasswordEl ? loginPasswordEl.value.trim() : "";
+
+    if (!id || !loginPassword) {
+      signinError.textContent = "Please fill in ID Number and Password.";
+      signinError.style.display = "block";
+      return;
+    }
+
+    try {
+      signinSubmit.disabled = true;
+      signinSubmit.textContent = "Signing In...";
+
+      const res = await fetch(`${API_BASE}/api/auth/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: id, password: loginPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Authentication failed.");
+      }
+
+      // Check role in the response (either top-level or inside profile object)
+      const role = data.role || (data.profile && data.profile.role) || "student";
+
+      if (role === "admin") {
+        alert("Administrative access granted. Loading console...");
+        
+        // Clear input fields and close modal
+        document.getElementById("signin-id").value = "";
+        document.getElementById("signin-email").value = "";
+        if (loginPasswordEl) loginPasswordEl.value = "";
+        signinModal.classList.remove("open");
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+
+        window.location.href = "admin.html";
+      } else {
+        // ── Sign In Student ──
+        isSignedIn = true;
+        
+        const userSessionData = data.profile || {};
+
+        // Cache dynamically to local session variables
+        sessionStorage.setItem("student_id", userSessionData.student_id || id);
+        sessionStorage.setItem("email", userSessionData.email || "");
+        sessionStorage.setItem("course", userSessionData.course || "");
+        sessionStorage.setItem("year_level", userSessionData.year_level || "");
+
+        window.currentStudentId = userSessionData.student_id || id;
+        window.currentStudentEmail = userSessionData.email || "";
+        window.currentStudentCourse = userSessionData.course || "";
+        window.currentStudentYearLevel = userSessionData.year_level || "";
+
+        if (!window.currentConversationId) {
+          window.currentConversationId = generateUUID();
+        }
+        const newChatBtn = document.getElementById("btn-new-chat");
+        if (newChatBtn) {
+          newChatBtn.style.display = "flex";
+        }
+        const newChatDivider = document.getElementById("new-chat-divider");
+        if (newChatDivider) {
+          newChatDivider.style.display = "block";
+        }
+
+        // Show Profile nav item
+        navProfile.style.display = "";
+
+        // Update profile page
+        document.getElementById("profile-display-id").textContent = id;
+        document.getElementById("profile-display-email").textContent = userSessionData.email || "";
+        document.getElementById("profile-display-name").textContent = id;
+
+        const profileMeta = document.getElementById('student-academic-meta');
+        if (profileMeta && typeof userSessionData !== 'undefined') {
+            const year = userSessionData.year_level || 'Regular';
+            const program = userSessionData.course || 'ICCT';
+            profileMeta.innerText = `${year} ${program} Student`;
+        }
+        if (document.getElementById('profile-box-course')) {
+            document.getElementById('profile-box-course').innerText = userSessionData.course || 'N/A';
+        }
+        if (document.getElementById('profile-box-year')) {
+            document.getElementById('profile-box-year').innerText = userSessionData.year_level || 'N/A';
+        }
+
+        // Change button to Sign Out
+        signinBtn.querySelector(".nav-label").textContent = "Sign Out";
+
+        // 1. DISMISS THE AUTHFRAME
+        signinModal.classList.remove("open");
+        signinModal.style.display = "none";
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+
+        // 2. CLEAN VIEW CONTROLS AND SYNC SIDEBAR HIGHLIGHTS
+        switchPage("chat");
+
+        // Clear input fields
+        document.getElementById("signin-id").value = "";
+        document.getElementById("signin-email").value = "";
+        if (loginPasswordEl) loginPasswordEl.value = "";
+
+        // Re-render tickets & history to unlock content
+        loadStudentTickets();
+        fetchHistoryLogs();
+      }
+    } catch (err) {
+      console.error("Sign-in error:", err);
+      signinError.textContent = err.message || "Connection error. Make sure the UniBot server is running.";
+      signinError.style.display = "block";
+    } finally {
+      signinSubmit.disabled = false;
+      signinSubmit.textContent = "Sign In";
+    }
+  });
+
+  // ── "➕ New Chat" Button event listener ───────────────────────────
+  const newChatBtn = document.getElementById("btn-new-chat");
+  if (newChatBtn) {
+    newChatBtn.addEventListener("click", () => {
+      window.currentConversationId = generateUUID();
+      window.isHistoryPreview = false;
+      chatHistory.length = 0;
+      currentSession = null;
+      messagesEl.innerHTML = `
+        <div class="msg-row bot" id="welcome-msg">
+          <div class="bot-avatar">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <div class="msg-bubble">Hello! Welcome to ICCT Student Inquiry Assistant. How may I help you today?</div>
+        </div>
+      `;
+      switchPage("chat");
+    });
+  }
+
+  // "Sign In" buttons inside Tickets & History pages
+  document.getElementById("tickets-signin-btn").addEventListener("click", () => {
+    openSigninModal();
+  });
+  document.getElementById("history-signin-btn").addEventListener("click", () => {
+    openSigninModal();
+  });
+
+  // ================================================================
+  //  CHAT HELPERS
+  // ================================================================
+
+  function escapeHTML(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function formatBotText(text) {
+    let html = escapeHTML(text);
+
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    // Italic: *text*
+    html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+    // Headers: ### Text, ## Text, # Text
+    html = html.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
+    html = html.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
+    html = html.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
+
+    // Unordered lists: - item or * item
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+
+    // Numbered lists: 1. item
+    html = html.replace(/^\d+\.\s+(.+)$/gm, "<li class=\"num-item\">$1</li>");
+
+    // Group consecutive unordered list items
+    html = html.replace(/(<li>.+?<\/li>(\s*<li>.+?<\/li>)*)/gs, "<ul>$1</ul>");
+
+    // Group consecutive numbered list items
+    html = html.replace(/((<li class="num-item">.+?<\/li>(\s*<li class="num-item">.+?<\/li>)*))/gs, "<ol>$1</ol>");
+
+    // Remove temporary class from numbered list items
+    html = html.replace(/<li class="num-item">/g, "<li>");
+
+    // Convert remaining newlines to HTML line breaks
+    html = html.replace(/\n/g, "<br>");
+
+    // Clean up extra <br> elements around block elements
+    html = html.replace(/<br>\s*<(ul|ol|li|h1|h2|h3)/gi, "<$1");
+    html = html.replace(/<\/(ul|ol|li|h1|h2|h3)>\s*<br>/gi, "</$1>");
+
+    return html;
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
+  }
+
+  // ── Chat bubble SVG avatar ──────────────────────────────────────
+  const botAvatarHTML = `<div class="bot-avatar"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>`;
+
+  function appendUserBubble(text) {
+    const row = document.createElement("div");
+    row.className = "msg-row user";
+    row.innerHTML = `<div class="msg-bubble">${escapeHTML(text)}</div>`;
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function appendBotBubble(text) {
+    const row = document.createElement("div");
+    row.className = "msg-row bot";
+    row.innerHTML = `${botAvatarHTML}<div class="msg-bubble">${formatBotText(text)}</div>`;
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function appendErrorBubble(text) {
+    const row = document.createElement("div");
+    row.className = "msg-row bot error";
+    row.innerHTML = `${botAvatarHTML}<div class="msg-bubble">${escapeHTML(text)}</div>`;
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function showTyping() {
+    removeTyping();
+    const row = document.createElement("div");
+    row.className = "typing-row";
+    row.id = "typing-indicator";
+    row.innerHTML = `${botAvatarHTML}<div class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typing-indicator");
+    if (el) el.remove();
+  }
+
+  // ================================================================
+  //  TICKETS & HISTORY RENDERERS
+  // ================================================================
+
+
+
+  function loadConversationHistory() {
+    fetchHistoryLogs();
+  }
+
+  function clearChatScreenToDefault() {
+    chatHistory.length = 0;
+    currentSession = null;
+    messagesEl.innerHTML = `
+      <div class="msg-row bot" id="welcome-msg">
+        <div class="bot-avatar">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="msg-bubble">Hello! Welcome to ICCT Student Inquiry Assistant. How may I help you today?</div>
+      </div>
+    `;
+    window.currentConversationId = generateUUID();
+  }
+
+  function renderHistory(conversations = []) {
+    const loginMsg = document.getElementById("history-login-required");
+    const list     = document.getElementById("history-list");
+    const empty    = document.getElementById("history-empty");
+
+    // If not signed in, show login prompt and hide content
+    if (!isSignedIn) {
+      loginMsg.style.display = "block";
+      list.style.display = "none";
+      empty.style.display = "none";
+      return;
+    }
+
+    // Signed in — hide login prompt and show content
+    loginMsg.style.display = "none";
+    list.style.display = "flex";
+    list.style.flexDirection = "column";
+    list.style.gap = "0";
+    list.innerHTML = "";
+
+    // Load LocalStorage cache fallbacks for Pin/Delete persistence
+    const localDeleted = JSON.parse(localStorage.getItem("unibot_deleted_sessions") || "[]");
+    const localPinned = JSON.parse(localStorage.getItem("unibot_pinned_sessions") || "[]");
+
+    // Filter out deleted items
+    let filtered = conversations.filter(c => !localDeleted.includes(c.conversation_id));
+
+    // Update pinned state from LocalStorage
+    filtered.forEach(c => {
+      if (localPinned.includes(c.conversation_id)) {
+        c.is_pinned = true;
+      }
+    });
+
+    // Re-sort unique conversations: pinned first, then by earliest created_at descending
+    filtered.sort((a, b) => {
+      const pinA = a.is_pinned ? 1 : 0;
+      const pinB = b.is_pinned ? 1 : 0;
+      if (pinB !== pinA) {
+        return pinB - pinA;
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    if (filtered.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+
+    filtered.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "card-item history-session-item conversation-item";
+      item.style.cursor = "pointer";
+      item.dataset.id = c.conversation_id;
+      if (c.is_pinned) {
+        item.style.background = "var(--blue-50)";
+      }
+      
+      const snippet = c.first_message || "Empty Conversation";
+      const title = snippet.length > 32 ? snippet.substring(0, 32) + "..." : snippet;
+      const pinOpacity = c.is_pinned ? "1" : "0.3";
+
+      item.innerHTML = `
+        <div class="card-info">
+          <h3>💬 ${escapeHTML(title)}</h3>
+          <div class="card-meta"><span>Conversation Session</span></div>
+        </div>
+        <div class="card-right" style="display: flex; align-items: center; gap: 14px; position: relative;">
+          <span class="card-date">${new Date(c.created_at).toLocaleDateString()}</span>
+          <div class="history-actions">
+            <button class="history-action-btn pin-btn" title="${c.is_pinned ? "Unpin Chat" : "Pin Chat"}" style="background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; opacity: ${pinOpacity}; transition: transform 0.2s;" data-pinned="${c.is_pinned}">📌</button>
+            <button class="history-action-btn delete-btn" title="Delete Chat" style="background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; opacity: 0.6; transition: transform 0.2s;">🗑️</button>
+          </div>
+          <button class="mobile-menu-dots" onclick="toggleHistoryMenu(event, '${c.conversation_id}')">⋮</button>
+          <div class="history-dropdown-menu" id="dropdown-${c.conversation_id}">
+            <div class="dropdown-row" onclick="pinConversation(event, '${c.conversation_id}', ${c.is_pinned})">
+              <span>${c.is_pinned ? "Unpin Conversation" : "Pin Conversation"}</span>
+            </div>
+            <div class="dropdown-row" onclick="deleteConversation(event, '${c.conversation_id}')">
+              <span>Delete Chat</span>
+            </div>
+          </div>
+        </div>`;
+      list.appendChild(item);
+    });
+  }
+
+  window.toggleHistoryMenu = function(event, chatId) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    // Close other dropdowns
+    document.querySelectorAll('.history-dropdown-menu').forEach(el => {
+      if (el.id !== `dropdown-${chatId}`) {
+        el.style.display = 'none';
+      }
+    });
+
+    const menu = document.getElementById(`dropdown-${chatId}`);
+    if (menu) {
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+  };
+
+  window.pinConversation = function(event, id, currentlyPinned) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    const nextPinned = !currentlyPinned;
+    let localPinned = JSON.parse(localStorage.getItem("unibot_pinned_sessions") || "[]");
+    if (nextPinned) {
+      if (!localPinned.includes(id)) localPinned.push(id);
+    } else {
+      localPinned = localPinned.filter(x => x !== id);
+    }
+    localStorage.setItem("unibot_pinned_sessions", JSON.stringify(localPinned));
+
+    // Hide dropdown
+    const menu = document.getElementById(`dropdown-${id}`);
+    if (menu) menu.style.display = 'none';
+
+    if (id === "default" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      loadConversationHistory();
+      return;
+    }
+
+    fetch(`${API_BASE}/api/conversations/toggle-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: id, isPinned: nextPinned })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+    })
+    .then(data => {
+        loadConversationHistory();
+    })
+    .catch(err => alert("Failed to update pin state."));
+  };
+
+  window.deleteConversation = function(event, chatId) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    // Hide dropdown
+    const menu = document.getElementById(`dropdown-${chatId}`);
+    if (menu) menu.style.display = 'none';
+
+    studentChatIdToDelete = chatId;
+    document.getElementById('student-delete-modal').style.display = 'flex';
+  };
+
+  // Close dropdowns on window click
+  window.addEventListener('click', () => {
+    document.querySelectorAll('.history-dropdown-menu').forEach(el => {
+      el.style.display = 'none';
+    });
+  });
+
+  // Click event listener for history session items
+  document.getElementById("history-list").addEventListener("click", async (e) => {
+    // ── Pin Action ──
+    const pinBtn = e.target.closest(".pin-btn");
+    if (pinBtn) {
+      e.stopPropagation();
+      const item = pinBtn.closest(".conversation-item");
+      const id = item.dataset.id;
+      const currentlyPinned = pinBtn.dataset.pinned === "true";
+      const nextPinned = !currentlyPinned;
+
+      // Update LocalStorage cache
+      let localPinned = JSON.parse(localStorage.getItem("unibot_pinned_sessions") || "[]");
+      if (nextPinned) {
+        if (!localPinned.includes(id)) localPinned.push(id);
+      } else {
+        localPinned = localPinned.filter(x => x !== id);
+      }
+      localStorage.setItem("unibot_pinned_sessions", JSON.stringify(localPinned));
+
+      // Intercept non-UUIDs to prevent Supabase database schema syntax errors
+      if (id === "default" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        loadConversationHistory();
+        return;
+      }
+
+      fetch(`${API_BASE}/api/conversations/toggle-pin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: id, isPinned: !currentlyPinned })
+      })
+      .then(res => {
+          if (!res.ok) throw new Error();
+          return res.json();
+      })
+      .then(data => {
+          // Re-fetch and re-render the history tab smoothly to show updated sorting
+          loadConversationHistory();
+      })
+      .catch(err => alert("Failed to update pin state."));
+      return;
+    }
+
+    // ── Delete Action ──
+    const deleteBtn = e.target.closest(".delete-btn");
+    if (deleteBtn) {
+      e.stopPropagation();
+      const item = deleteBtn.closest(".conversation-item");
+      const chatId = item.dataset.id;
+      studentChatIdToDelete = chatId;
+      document.getElementById('student-delete-modal').style.display = 'flex';
+      return;
+    }
+
+    // ── Normal Item Click ──
+    const item = e.target.closest(".conversation-item");
+    if (!item) return;
+
+    const clickedId = item.dataset.id;
+    if (!clickedId) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/history/${window.currentStudentId}?conversationId=${clickedId}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const logs = await res.json();
+
+      // Set current session conversationId
+      window.currentConversationId = clickedId;
+
+      // Clear chat viewport
+      messagesEl.innerHTML = "";
+      chatHistory.length = 0;
+
+      // Populate history with loaded messages
+      logs.forEach(log => {
+        const role = log.sender === "user" ? "user" : "model";
+        chatHistory.push({ role: role, text: log.message_text });
+
+        if (log.sender === "user") {
+          appendUserBubble(log.message_text);
+        } else {
+          appendBotBubble(log.message_text);
+        }
+      });
+
+      // Switch to Chat page and scroll to bottom
+      switchPage("chat");
+      scrollToBottom();
+    } catch (err) {
+      console.error("Error loading conversation session:", err);
+      alert("Failed to load conversation history.");
+    }
+  });
+
+  async function loadStudentTickets() {
+    const loginMsg = document.getElementById("tickets-login-required");
+    const list     = document.getElementById("tickets-list");
+    const empty    = document.getElementById("tickets-empty");
+
+    if (!isSignedIn || !window.currentStudentId) {
+      loginMsg.style.display = "block";
+      list.style.display = "none";
+      empty.style.display = "none";
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/student/tickets/${window.currentStudentId}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      const tickets = data.tickets || [];
+
+      loginMsg.style.display = "none";
+      list.innerHTML = "";
+
+      if (tickets.length === 0) {
+        list.style.display = "none";
+        empty.style.display = "block";
+        return;
+      }
+
+      empty.style.display = "none";
+      list.style.display = "block";
+
+      tickets.forEach(t => {
+        const card = document.createElement("div");
+        card.className = "ticket-card";
+        
+        const ticketId = `TKT-${String(t.id).padStart(3, "0")}`;
+        const formattedDate = new Date(t.created_at).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        const badgeText = t.status === "Resolved" ? "Resolved" : "Pending Admin Review";
+        const badgeClass = t.status === "Resolved" ? "badge-resolved" : "badge-pending";
+
+        let adminReplyHTML = "";
+        if (t.status === "Resolved" && t.admin_reply) {
+          adminReplyHTML = `
+            <div class="admin-response-box">
+              <div class="admin-response-icon">ℹ️</div>
+              <div class="admin-response-content">
+                <div class="admin-response-title">Official Administrative Response</div>
+                <div class="admin-response-text">${escapeHTML(t.admin_reply)}</div>
+              </div>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="ticket-header">
+            <div class="ticket-id-date">
+              <span class="ticket-id">${ticketId}</span>
+              <span class="ticket-date">Submitted on ${formattedDate}</span>
+            </div>
+            <span class="ticket-status-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="ticket-body">
+            <div class="ticket-label">Unresolved Inquiry</div>
+            <div class="ticket-inquiry">${escapeHTML(t.unresolved_inquiry)}</div>
+            ${adminReplyHTML}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    } catch (err) {
+      console.error("Error loading student tickets:", err);
+      loginMsg.style.display = "none";
+      list.style.display = "none";
+      empty.style.display = "block";
+    }
+  }
+
+  async function fetchHistoryLogs() {
+    if (!isSignedIn || !window.currentStudentId) {
+      renderHistory([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/conversations/${window.currentStudentId}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      renderHistory(data);
+    } catch (err) {
+      console.error("Error fetching conversations:", err);
+      renderHistory([]);
+    }
+  }
+
+  // Initial render (empty states)
+  loadStudentTickets();
+  renderHistory([]);
+
+  // ================================================================
+  //  SEND MESSAGE — Core Chat Flow
+  // ================================================================
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || isWaiting) return;
+
+    isWaiting = true;
+    sendBtn.disabled = true;
+    inputEl.value = "";
+    inputEl.focus();
+
+    // Show user bubble
+    appendUserBubble(text);
+    chatHistory.push({ role: "user", text });
+
+
+    // Track session for history
+    if (!currentSession) {
+      const words = text.split(/\s+/).slice(0, 4).join(" ");
+      currentSession = {
+        title: words.length > 30 ? words.slice(0, 30) + "…" : words,
+        count: 0,
+        date: new Date().toISOString().slice(0, 10),
+      };
+      sessionsData.unshift(currentSession);
+    }
+    currentSession.count++;
+
+    showTyping();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: window.currentStudentId || "anonymous",
+          message: text,
+          history: chatHistory,
+          conversationId: window.currentConversationId
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+
+      const data = await res.json();
+      removeTyping();
+
+      const reply = data.reply || "I didn't receive a valid response.";
+      
+      if (data.offerTicket) {
+        appendBotBubble(reply);
+        chatHistory.push({ role: "model", text: reply });
+        currentSession.count++;
+
+        // Append the button row right below the bubble, matching design tokens
+        const btnRow = document.createElement("div");
+        btnRow.className = "msg-row bot";
+        btnRow.style.marginTop = "-8px";
+        btnRow.style.paddingLeft = "46px";
+        btnRow.innerHTML = `<button class="login-required-link submit-ticket-btn" data-inquiry="${escapeHTML(data.unresolvedInquiry || text)}">🎟️ Submit Support Ticket</button>`;
+        messagesEl.appendChild(btnRow);
+      } else {
+        appendBotBubble(reply);
+        chatHistory.push({ role: "model", text: reply });
+        currentSession.count++;
+      }
+
+    } catch (err) {
+      console.error("Chat API error:", err);
+      removeTyping();
+      appendErrorBubble("Connection error. Please ensure the UniBot server is running.");
+    } finally {
+      isWaiting = false;
+      sendBtn.disabled = false;
+    }
+  }
+
+  // ── Event Listeners ─────────────────────────────────────────────
+  sendBtn.addEventListener("click", sendMessage);
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  // ── Delegated event listener for dynamically created "Submit Support Ticket" buttons ─
+  messagesEl.addEventListener("click", async (e) => {
+    if (e.target && e.target.classList.contains("submit-ticket-btn")) {
+      const btn = e.target;
+      const inquiryText = btn.dataset.inquiry;
+
+      if (!isSignedIn || !window.currentStudentId) {
+        alert("Please sign in to submit a support ticket.");
+        openSigninModal();
+        return;
+      }
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Submitting...";
+
+        const res = await fetch("http://localhost:5000/api/tickets/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: window.currentStudentId,
+            unresolvedInquiry: inquiryText
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 400) {
+          // Rule violation: intercept the error message and display to student
+          alert(data.message || "Submission Blocked: You currently have 3 pending support tickets.");
+          btn.disabled = false;
+          btn.textContent = "🎟️ Submit Support Ticket";
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to submit ticket.");
+        }
+
+        alert("Support ticket successfully filed with the ICCT Administration!");
+        btn.remove();
+        loadStudentTickets();
+
+      } catch (err) {
+        console.error("Submit ticket error:", err);
+        alert(err.message || "Connection error. Please try again later.");
+        btn.disabled = false;
+        btn.textContent = "🎟️ Submit Support Ticket";
+      }
+    }
+  });
+
+  // ── Settings Theme Change Listener ──────────────────────────────
+  const themeSelect = document.getElementById("setting-theme");
+  if (themeSelect) {
+    themeSelect.addEventListener("change", (e) => {
+      const theme = e.target.value;
+      if (theme === "dark") {
+        document.body.classList.add("dark");
+      } else {
+        document.body.classList.remove("dark");
+      }
+    });
+  }
+
+  // ── Student Chat Deletion Confirmation Modal Handlers ────────────
+  const deleteModal = document.getElementById("student-delete-modal");
+
+  if (deleteModal) {
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) {
+        studentChatIdToDelete = null;
+        deleteModal.style.display = 'none';
+      }
+    });
+  }
+
+  const cancelBtn = document.getElementById('cancel-student-delete');
+  if (cancelBtn) {
+    cancelBtn.onclick = function() {
+      studentChatIdToDelete = null;
+      document.getElementById('student-delete-modal').style.display = 'none';
+    };
+  }
+
+  const confirmBtn = document.getElementById('confirm-student-delete');
+  if (confirmBtn) {
+    confirmBtn.onclick = function() {
+      const id = studentChatIdToDelete;
+      if (!id) {
+        studentChatIdToDelete = null;
+        document.getElementById('student-delete-modal').style.display = 'none';
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      if (cancelBtn) cancelBtn.disabled = true;
+      confirmBtn.textContent = "Deleting...";
+
+      // Update LocalStorage cache
+      let localDeleted = JSON.parse(localStorage.getItem("unibot_deleted_sessions") || "[]");
+      if (!localDeleted.includes(id)) {
+        localDeleted.push(id);
+      }
+      localStorage.setItem("unibot_deleted_sessions", JSON.stringify(localDeleted));
+
+      // Intercept non-UUIDs to prevent Supabase database schema syntax errors
+      if (id === "default" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        if (window.currentConversationId === id) {
+          clearChatScreenToDefault();
+        }
+        loadConversationHistory();
+        studentChatIdToDelete = null;
+        document.getElementById('student-delete-modal').style.display = 'none';
+        confirmBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        confirmBtn.textContent = "Delete Chat";
+        return;
+      }
+
+      fetch(`${API_BASE}/api/conversations/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: id })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        if (window.currentConversationId === id) {
+          clearChatScreenToDefault();
+        }
+        document.getElementById('student-delete-modal').style.display = 'none';
+        studentChatIdToDelete = null;
+        loadConversationHistory();
+      })
+      .catch(err => {
+        console.error("Delete conversation error:", err);
+        alert("Failed to delete conversation.");
+      })
+      .finally(() => {
+        confirmBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        confirmBtn.textContent = "Delete Chat";
+      });
+    };
+  }
+
+  inputEl.focus();
+
+})();
+</script>
+
+</body>
+</html>

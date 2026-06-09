@@ -1,0 +1,2624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICCT Administrative Console — Inquiry Analytics & Ticket Management</title>
+  <meta name="description" content="School administrator panel for tracking inquiry analytics and managing student support tickets." />
+
+  <!-- Google Fonts — Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* ==========================================================================
+       RESET & THEME VARIABLES
+       ========================================================================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Colors */
+      --navy-dark: #0f172a;
+      --navy-slate: #1e293b;
+      --navy-light: #334155;
+      
+      --brand-blue: #1e3a8a;
+      --brand-blue-hover: #172554;
+      --brand-accent: #2563eb;
+      --brand-blue-light: #eff6ff;
+
+      --bg-page: #f8fafc;
+      --bg-white: #ffffff;
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+
+      /* Accents */
+      --amber-500: #ea580c;
+      --amber-100: #ffedd5;
+      --amber-800: #9a3412;
+
+      --emerald-500: #16a34a;
+      --emerald-100: #dcfce7;
+      --emerald-800: #166534;
+
+      --red-500: #ef4444;
+      --red-100: #fee2e2;
+      --red-800: #991b1b;
+
+      /* Typography */
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-tertiary: #94a3b8;
+
+      /* Layout Settings */
+      --sidebar-w: 74px;
+      --header-h: 80px;
+
+      /* Border Radii */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      /* Elevation Shadows */
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+      /* Micro-Animations */
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+       LAYOUT SHELL
+       ========================================================================== */
+    #admin-shell {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+       SIDEBAR (Cohesive with main student dashboard design)
+       ========================================================================== */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 0;
+      flex-shrink: 0;
+      z-index: 20;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      width: 100%;
+    }
+
+    .nav-group-bottom {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--brand-blue-light);
+      color: var(--brand-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-weight: 700;
+      font-size: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 58px;
+      height: 58px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      color: var(--text-secondary);
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: var(--brand-blue-light);
+      color: var(--brand-accent);
+    }
+
+    .nav-item.active {
+      background: var(--brand-blue);
+      color: #ffffff;
+    }
+
+    .nav-item.active:hover {
+      background: var(--brand-blue-hover);
+    }
+
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .nav-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    /* Return to student dashboard indicator */
+    .nav-item.back-home {
+      color: var(--brand-accent);
+    }
+    .nav-item.back-home:hover {
+      background: var(--brand-blue-light);
+      color: var(--brand-accent);
+    }
+
+    /* ==========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================== */
+    #main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+       ADMINISTRATIVE MAIN HEADER PANEL
+       ========================================================================== */
+    #top-header {
+      display: flex;
+      align-items: center;
+      height: var(--header-h);
+      padding: 0 32px;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-icon-container {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: var(--red-100);
+      color: var(--red-500);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.1);
+    }
+
+    .header-icon-container svg {
+      width: 26px;
+      height: 26px;
+      fill: currentColor;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .header-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Refresh button */
+    .btn-refresh {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-refresh:hover {
+      background: var(--border-light);
+      color: var(--text-primary);
+      border-color: var(--text-tertiary);
+    }
+
+    .btn-refresh svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.4s ease;
+    }
+
+    .btn-refresh:hover svg {
+      transform: rotate(180deg);
+    }
+
+    /* ==========================================================================
+       SCROLLABLE DASHBOARD VIEWPORT
+       ========================================================================== */
+    #dashboard-content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ==========================================================================
+       METRICS CONTAINER ROW (3-Column Grid)
+       ========================================================================== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px !important;
+    }
+
+    .metric-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .metric-card.blue::before { background: var(--brand-accent); }
+    .metric-card.orange::before { background: var(--amber-500); }
+    .metric-card.green::before { background: var(--emerald-500); }
+
+    .metric-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .metric-value-container {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .metric-value {
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-card.blue .metric-value { color: var(--brand-blue); }
+    .metric-card.orange .metric-value { color: var(--amber-500); }
+    .metric-card.green .metric-value { color: var(--emerald-500); }
+
+    .metric-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    .metric-card.blue .metric-badge { background: var(--brand-blue-light); color: var(--brand-accent); }
+    .metric-card.orange .metric-badge { background: var(--amber-100); color: var(--amber-800); }
+    .metric-card.green .metric-badge { background: var(--emerald-100); color: var(--emerald-800); }
+
+    /* ==========================================================================
+       ANALYTICS VISUAL GRAPHS ROW (2-Column Grid/Flex)
+       ========================================================================== */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      gap: 24px;
+    }
+
+    .chart-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      height: 360px;
+    }
+
+    .chart-header {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chart-label {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      letter-spacing: -0.01em;
+    }
+
+    .chart-body {
+      flex: 1;
+      position: relative;
+      min-height: 0; /* Important for Chart.js canvas sizing */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ==========================================================================
+       ACTION DATA GRID TABLE (Wide Section Card)
+       ========================================================================== */
+    .table-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-top: 2rem;
+      margin-bottom: 24px;
+    }
+
+    .table-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-dark);
+    }
+
+    .table-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: var(--border-light);
+      padding: 14px 24px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 16px 24px;
+      font-size: 14px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: var(--border-light);
+    }
+
+    .font-semibold {
+      font-weight: 600;
+    }
+
+    .text-slate-800 {
+      color: var(--navy-dark);
+    }
+
+    .text-slate-600 {
+      color: var(--text-secondary);
+    }
+
+    .max-w-md {
+      max-width: 440px;
+    }
+
+    .truncate-2-lines {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    /* Badge tags */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .badge-pending {
+      background: var(--amber-100);
+      color: var(--amber-800);
+      border: 1px solid rgba(234, 88, 12, 0.2);
+    }
+
+    .badge-resolved {
+      background: var(--emerald-100);
+      color: var(--emerald-800);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+
+    /* Priority badges */
+    .badge-high {
+      background: var(--red-100);
+      color: var(--red-800);
+    }
+
+    .badge-medium {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .badge-low {
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    /* Action elements */
+    .btn-action {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-resolve {
+      background: var(--emerald-500);
+      color: #ffffff;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-resolve:hover:not(:disabled) {
+      background: var(--emerald-800);
+      transform: scale(1.02);
+    }
+
+    .btn-resolve:disabled {
+      background: var(--text-tertiary);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .text-resolved-check {
+      color: var(--emerald-500);
+      font-weight: 600;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 48px 0;
+      font-style: italic;
+    }
+
+    /* ==========================================================================
+       TOAST NOTIFICATIONS
+       ========================================================================== */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .toast {
+      background: var(--navy-dark);
+      color: #ffffff;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 280px;
+      transform: translateY(100px);
+      opacity: 0;
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      border-left: 4px solid var(--emerald-500);
+    }
+
+    @keyframes slideIn {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.fade-out {
+      animation: fadeOut 0.3s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+    }
+
+    /* ==========================================================================
+       KNOWLEDGE BASE MANAGER PANEL
+       ========================================================================== */
+    #knowledge-panel {
+      display: none;
+      animation: panelFadeIn 0.35s ease;
+    }
+
+    @keyframes panelFadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .knowledge-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .knowledge-header-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #dbeafe, #ede9fe);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+    }
+
+    .knowledge-header-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--brand-accent);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .knowledge-header-text h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      letter-spacing: -0.01em;
+    }
+
+    .knowledge-header-text p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .knowledge-form-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .knowledge-form-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .knowledge-form-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--brand-accent), #7c3aed, var(--emerald-500));
+    }
+
+    .form-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-section-title svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--brand-accent);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .knowledge-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-group label .required-dot {
+      color: var(--red-500);
+      margin-left: 2px;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      background: var(--bg-white);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 160px;
+      line-height: 1.6;
+    }
+
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 16px;
+    }
+
+    .btn-publish {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 28px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+      letter-spacing: 0.01em;
+    }
+
+    .btn-publish:hover:not(:disabled) {
+      background: linear-gradient(135deg, #15803d, #166534);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+    }
+
+    .btn-publish:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-publish:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-publish svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
+
+    .publish-status {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+      animation: panelFadeIn 0.3s ease;
+    }
+
+    .publish-status.success {
+      display: flex;
+      background: var(--emerald-100);
+      color: var(--emerald-800);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+
+    .publish-status.error {
+      display: flex;
+      background: var(--red-100);
+      color: var(--red-800);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .publish-status svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Knowledge Records Table */
+    .kb-records-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      margin-top: 28px;
+      overflow: hidden;
+      animation: panelFadeIn 0.35s ease;
+    }
+
+    .kb-records-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kb-records-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kb-records-header h3 svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--brand-accent);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .kb-record-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      background: var(--border-light);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+
+    .kb-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .kb-table th {
+      background: var(--border-light);
+      padding: 12px 24px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kb-table td {
+      padding: 14px 24px;
+      font-size: 13px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: middle;
+    }
+
+    .kb-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .kb-table tr:hover td {
+      background: var(--border-light);
+    }
+
+    .kb-table .kb-id {
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+
+    .kb-category-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--brand-blue-light);
+      color: var(--brand-accent);
+      border: 1px solid rgba(37, 99, 235, 0.12);
+    }
+
+    .btn-edit {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      background: var(--brand-blue-light);
+      color: var(--brand-accent);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: var(--radius-sm);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-right: 8px;
+    }
+
+    .btn-edit:hover:not(:disabled) {
+      background: var(--brand-accent);
+      color: #ffffff;
+      border-color: var(--brand-accent);
+      transform: scale(1.03);
+    }
+
+    .btn-edit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-edit svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-delete {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      background: var(--red-100);
+      color: var(--red-800);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius-sm);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-delete:hover:not(:disabled) {
+      background: var(--red-500);
+      color: #ffffff;
+      border-color: var(--red-500);
+      transform: scale(1.03);
+    }
+
+    .btn-delete:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-delete svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .kb-empty-state {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1024px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .chart-card {
+        height: 320px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      #dashboard-content {
+        padding: 16px;
+      }
+      #top-header {
+        padding: 0 16px;
+      }
+    }
+
+    /* Delete Confirmation Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: modalFadeInOverlay 0.2s ease-out;
+    }
+
+    .modal-card {
+      background-color: #ffffff;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 420px;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      animation: modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-icon {
+      color: var(--red-500);
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-icon svg {
+      width: 28px;
+      height: 28px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+
+    .modal-desc {
+      font-size: 13.5px;
+      color: #475569;
+      line-height: 1.5;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-modal {
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: inherit;
+      flex: 1;
+    }
+
+    .btn-modal.btn-cancel {
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+    }
+
+    .btn-modal.btn-cancel:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .btn-modal.btn-delete-confirm {
+      background: var(--red-500);
+      color: #ffffff;
+    }
+
+    .btn-modal.btn-delete-confirm:hover {
+      background: var(--red-800);
+      transform: scale(1.02);
+    }
+
+    @keyframes modalFadeInOverlay {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes modalScaleIn {
+      from { opacity: 0; transform: scale(0.9) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Cohesive Dropdown Menu Actions inside table rows */
+    .custom-row-actions {
+      position: relative;
+      display: inline-block;
+    }
+
+    .action-dot-trigger {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+      outline: none;
+    }
+
+    .action-dot-trigger:hover,
+    .action-dot-trigger:focus {
+      background: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .row-action-dropdown {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 50;
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0;
+      margin-top: 4px;
+      animation: panelFadeIn 0.2s ease;
+    }
+
+    .row-action-dropdown a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: var(--transition);
+      text-align: left;
+    }
+
+    .row-action-dropdown a:hover {
+      background: var(--border-light);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="admin-shell">
+    
+    <!-- Cohesive Sidebar matching student application style layout -->
+    <aside id="sidebar">
+      <div class="nav-logo">A</div>
+      <nav class="nav-group">
+        <button class="nav-item active" title="Dashboard Summary" id="btn-overview">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+          </div>
+          <span class="nav-label">Overview</span>
+        </button>
+        <button class="nav-item" title="Manage Handbook Knowledge Base" id="btn-knowledge">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="9" y1="7" x2="16" y2="7"></line><line x1="9" y1="11" x2="14" y2="11"></line></svg>
+          </div>
+          <span class="nav-label">Handbook</span>
+        </button>
+        <button class="nav-item" title="Tickets Center" id="btn-tickets">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M16 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <span class="nav-label">Tickets</span>
+        </button>
+        <button class="nav-item" title="Settings (Configuration)" id="btn-settings">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </div>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+      
+      <div class="nav-group-bottom">
+        <a href="index.html" class="nav-item back-home" title="Go to Chat Dashboard">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </div>
+          <span class="nav-label">Exit Panel</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-area">
+      
+      <!-- Top header panel -->
+      <header id="top-header">
+        <div class="header-icon-container" title="Administrative Icon">
+          <!-- Small gear SVG logo -->
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 3.86L19.07 18H4.93L12 5.86zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
+        </div>
+        <div class="header-text">
+          <h1 class="header-title">ICCT Administrative Console</h1>
+          <span class="header-subtitle">Inquiry Analytics & Ticket Management Dashboard</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn-refresh" id="refresh-button">
+            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Sync Data
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Panel Viewport -->
+      <div id="dashboard-content">
+
+        <!-- Overview Panel -->
+        <div id="overview-panel">
+          <!-- Metrics Cards Container -->
+          <section class="metrics-grid">
+            <!-- Card 1: Total System Inquiries -->
+            <div class="metric-card blue">
+              <span class="metric-title">Total System Inquiries</span>
+              <div class="metric-value-container">
+                <span class="metric-value" id="total-inquiries">0</span>
+                <span class="metric-badge">All-Time logs</span>
+              </div>
+            </div>
+            <!-- Card 2: Active Pending Tickets -->
+            <div class="metric-card orange">
+              <span class="metric-title">Active Pending Tickets</span>
+              <div class="metric-value-container">
+                <span class="metric-value" id="pending-tickets">0</span>
+                <span class="metric-badge">Requires Action</span>
+              </div>
+            </div>
+            <!-- Card 3: AI Auto-Resolution Rate -->
+            <div class="metric-card green">
+              <span class="metric-title">AI Auto-Resolution Rate</span>
+              <div class="metric-value-container">
+                <span class="metric-value" id="resolution-rate">0.0%</span>
+                <span class="metric-badge">AI Confirmed</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Visual Analytics Row -->
+          <section class="charts-grid">
+            <!-- Category Bar Chart -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-label">Top Student Inquiry Categories</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="categoriesChart"></canvas>
+              </div>
+            </div>
+            <!-- Ticket Status Doughnut Chart -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-label">Support Ticket Distribution by Status</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="statusChart"></canvas>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Dedicated Tickets View Panel -->
+        <div id="admin-tickets-panel" style="display: none; animation: panelFadeIn 0.35s ease;">
+          <!-- Live Filters & Search Bar UI Components -->
+          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; background: var(--bg-white); padding: 18px 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+            <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 6px;">
+              <label for="admin-ticket-search" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Search Tickets</label>
+              <input type="text" id="admin-ticket-search" placeholder="Search by Student ID or Inquiry content..." style="padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; transition: border-color var(--transition);" />
+            </div>
+            <div style="width: 180px; display: flex; flex-direction: column; gap: 6px;">
+              <label for="admin-ticket-filter-status" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Filter by Status</label>
+              <select id="admin-ticket-filter-status" style="padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; background: var(--bg-white); cursor: pointer;">
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+            <div style="width: 200px; display: flex; flex-direction: column; gap: 6px;">
+              <label for="admin-ticket-filter-category" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Filter by Category</label>
+              <select id="admin-ticket-filter-category" style="padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; background: var(--bg-white); cursor: pointer;">
+                <option value="All">All Categories</option>
+                <option value="Enrollment">Enrollment</option>
+                <option value="Tuition">Tuition</option>
+                <option value="Document Requests">Document Requests</option>
+                <option value="Academic Policies">Academic Policies</option>
+                <option value="Accounting">Accounting</option>
+                <option value="Admission">Admission</option>
+                <option value="Course Offering">Course Offering</option>
+                <option value="Student Affairs">Student Affairs</option>
+                <option value="Scholarships">Scholarships</option>
+                <option value="Graduation">Graduation</option>
+                <option value="General Information">General Information</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Mounted Table Card -->
+          <section class="table-card" style="margin-top: 0;">
+            <div class="table-header">
+              <div>
+                <h2 class="table-title">Student Support Tickets</h2>
+                <p class="table-subtitle">Unresolved and recently solved cases filed through conversational chatbot channels.</p>
+              </div>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student ID</th>
+                    <th>Unresolved Inquiry</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tickets-tbody">
+                  <tr>
+                    <td colspan="5" class="empty-state">Loading tickets queue...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Knowledge Base Manager Panel -->
+        <div id="knowledge-panel">
+          <div class="knowledge-header">
+            <div class="knowledge-header-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
+            <div class="knowledge-header-text">
+              <h2>Knowledge Base Manager</h2>
+              <p>Create and publish new handbook policies directly into the AI chatbot's brain.</p>
+            </div>
+          </div>
+
+          <div class="knowledge-form-card">
+            <div class="form-section-title">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add New Policy Entry
+            </div>
+
+            <form id="knowledge-form" class="knowledge-form" autocomplete="off">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="kb-category">Category <span class="required-dot">*</span></label>
+                  <select id="kb-category" class="form-select" required>
+                    <option value="" disabled selected>Select a category…</option>
+                    <option value="Enrollment">Enrollment</option>
+                    <option value="Academic Policies">Academic Policies</option>
+                    <option value="Accounting">Accounting</option>
+                    <option value="Admission">Admission</option>
+                    <option value="Course Offering">Course Offering</option>
+                    <option value="Student Affairs">Student Affairs</option>
+                    <option value="Scholarships">Scholarships</option>
+                    <option value="Graduation">Graduation</option>
+                    <option value="General Information">General Information</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="kb-title">Policy Title <span class="required-dot">*</span></label>
+                  <input type="text" id="kb-title" class="form-input" placeholder="e.g., Late Enrollment Fee Policy" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="kb-content">Policy Content <span class="required-dot">*</span></label>
+                <textarea id="kb-content" class="form-textarea" placeholder="Enter the full policy text here. This will be embedded into the AI knowledge base and used to answer student inquiries…" required></textarea>
+              </div>
+
+              <div class="form-footer">
+                <button type="submit" class="btn-publish" id="btn-publish">
+                  <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><circle cx="12" cy="12" r="3"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+                  Publish to AI Brain
+                </button>
+                <span class="form-hint">The new entry will be vectorized and synced instantly.</span>
+              </div>
+            </form>
+
+            <div id="publish-status" class="publish-status"></div>
+          </div>
+
+          <!-- Active Knowledge Base Records Table -->
+          <div class="kb-records-card">
+            <div class="kb-records-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                Active Knowledge Base Records
+              </h3>
+              <span class="kb-record-count" id="kb-record-count">Loading…</span>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="kb-table">
+                <thead>
+                  <tr>
+                    <th style="width: 70px;">ID</th>
+                    <th style="width: 180px;">Category</th>
+                    <th>Title</th>
+                    <th style="width: 80px; text-align: center;">⚙️</th>
+                  </tr>
+                </thead>
+                <tbody id="kb-records-tbody">
+                  <tr>
+                    <td colspan="4" class="kb-empty-state">Loading handbook records…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel" style="display: none;">
+          <div class="table-card" style="padding: 28px; display: flex; flex-direction: column; gap: 24px;">
+            <div style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+              <h2 class="table-title" style="font-size: 18px; margin-bottom: 4px;">Console Configurations</h2>
+              <p class="table-subtitle">Customize operational limits, threshold sensitivity, and active AI model settings.</p>
+            </div>
+            
+            <form id="settings-form" onsubmit="event.preventDefault(); showToast('Settings saved successfully!');" style="display: flex; flex-direction: column; gap: 20px; max-width: 600px;">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="ai-model" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Active Generative AI Model</label>
+                <select id="ai-model" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); outline: none;">
+                  <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash (Active)</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                </select>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="fallback-threshold" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Vector Search Matching Threshold (Cosine Similarity)</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input type="range" id="fallback-threshold" min="0.10" max="0.90" step="0.01" value="0.23" style="flex: 1;" oninput="document.getElementById('threshold-val').innerText = this.value;" />
+                  <span id="threshold-val" style="font-size: 14px; font-weight: 600; min-width: 32px; text-align: right;">0.23</span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="ticket-limit" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Max Pending Tickets per Student</label>
+                <input type="number" id="ticket-limit" min="1" max="10" value="3" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); outline: none;" />
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="system-instructions" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Chatbot System Instruction Header Override</label>
+                <textarea id="system-instructions" rows="4" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); resize: vertical; outline: none;">You are the official ICCT Colleges Student Support Assistant. Your job is to answer student inquiries in a supportive, empathetic, and clear conversational tone using the provided university handbook context segments...</textarea>
+              </div>
+
+              <button type="submit" class="btn-action btn-resolve" style="padding: 12px 20px; align-self: flex-start; margin-top: 10px;">
+                Save Configurations
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Element container -->
+  <div id="toast-container"></div>
+
+  <!-- ==========================================================================
+       DASHBOARD LIFECYCLE SCRIPTS
+       ========================================================================== */ -->
+  <script>
+    // Set up API Base URL dynamically to support both localhost, IP address access, and local file access
+    const API_BASE = window.location.origin.startsWith('file://') ? 'http://localhost:5000' : '';
+
+    // Global references for chart instances to dynamically update them
+    let categoriesChartInstance = null;
+    let statusChartInstance = null;
+
+    // Toast message dispatcher
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      container.innerHTML = ''; // Prevent overlapping notifications by clearing the container
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `
+        <svg style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5;" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+
+      // Auto fade-out and clean up elements
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        toast.addEventListener('animationend', () => toast.remove());
+      }, 3500);
+    }
+
+    // Pull calculations metrics & populate dashboard cards/charts
+    async function syncDashboardData() {
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/stats`);
+        if (!response.ok) {
+          throw new Error(`Analytics server responded with HTTP status ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Overwrite metric tiles directly
+        document.getElementById('total-inquiries').innerText = (data.totalInquiries || 0).toLocaleString();
+        document.getElementById('pending-tickets').innerText = (data.pendingTickets || 0).toLocaleString();
+        document.getElementById('resolution-rate').innerText = data.resolutionRate || '0.0%';
+
+        // Map Category values
+        const categories = data.categories || {};
+        const categoriesData = [
+          categories.Enrollment || 0,
+          categories.Tuition || 0,
+          categories["Document Requests"] || 0,
+          categories.Scheduling || 0
+        ];
+
+        // Instantiate / update bar chart
+        if (categoriesChartInstance) {
+          categoriesChartInstance.data.datasets[0].data = categoriesData;
+          categoriesChartInstance.update();
+        } else {
+          const ctx = document.getElementById('categoriesChart').getContext('2d');
+          categoriesChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['Enrollment', 'Tuition', 'Document Requests', 'Scheduling'],
+              datasets: [{
+                label: 'Logs Count',
+                data: categoriesData,
+                backgroundColor: [
+                  'rgba(30, 58, 138, 0.85)',  // Navy
+                  'rgba(234, 88, 12, 0.85)',  // Deep Orange
+                  'rgba(37, 99, 235, 0.85)',  // Accent Blue
+                  'rgba(22, 163, 74, 0.85)'   // Vibrant Green
+                ],
+                borderColor: [
+                  'rgb(30, 58, 138)',
+                  'rgb(234, 88, 12)',
+                  'rgb(37, 99, 235)',
+                  'rgb(22, 163, 74)'
+                ],
+                borderWidth: 1,
+                borderRadius: 8,
+                borderSkipped: false
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: '#0f172a',
+                  padding: 10,
+                  cornerRadius: 8,
+                  font: { family: 'Inter' }
+                }
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { family: 'Inter', weight: 500 } }
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    precision: 0,
+                    font: { family: 'Inter' }
+                  },
+                  grid: { color: '#f1f5f9' }
+                }
+              }
+            }
+          });
+        }
+
+        // Map status ratios
+        const ticketStatus = data.ticketStatusDist || {};
+        const statusData = [
+          ticketStatus.Pending || 0,
+          ticketStatus.Resolved || 0
+        ];
+
+        // Instantiate / update donut chart
+        if (statusChartInstance) {
+          statusChartInstance.data.datasets[0].data = statusData;
+          statusChartInstance.update();
+        } else {
+          const ctx = document.getElementById('statusChart').getContext('2d');
+          statusChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Pending', 'Resolved'],
+              datasets: [{
+                data: statusData,
+                backgroundColor: [
+                  'rgba(234, 88, 12, 0.85)', // Amber/Orange
+                  'rgba(22, 163, 74, 0.85)'  // Emerald/Green
+                ],
+                borderColor: [
+                  'rgb(234, 88, 12)',
+                  'rgb(22, 163, 74)'
+                ],
+                borderWidth: 1.5,
+                hoverOffset: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    padding: 20,
+                    font: { family: 'Inter', weight: 600 },
+                    boxWidth: 12
+                  }
+                },
+                tooltip: {
+                  backgroundColor: '#0f172a',
+                  padding: 10,
+                  cornerRadius: 8,
+                  font: { family: 'Inter' }
+                }
+              },
+              cutout: '70%'
+            }
+          });
+        }
+
+      } catch (err) {
+        console.error('Failed to update stats or charts:', err);
+        showToast('Error syncing analytics indicators.');
+      }
+    }
+
+    let allTickets = [];
+
+    function getTicketCategory(unresolvedInquiry) {
+      if (!unresolvedInquiry) return 'General Information';
+      const text = unresolvedInquiry.toLowerCase();
+      if (text.includes('enroll') || text.includes('enrol') || text.includes('regis') || text.includes('subject') || text.includes('block') || text.includes('schedule')) {
+        return 'Enrollment';
+      }
+      if (text.includes('tuition') || text.includes('bayad') || text.includes('pay') || text.includes('fee') || text.includes('balance') || text.includes('ledger') || text.includes('cashier')) {
+        return 'Tuition';
+      }
+      if (text.includes('document') || text.includes('tor') || text.includes('transcript') || text.includes('diploma') || text.includes('certif') || text.includes('good moral') || text.includes('form 137')) {
+        return 'Document Requests';
+      }
+      return 'General Information';
+    }
+
+    // Pull support tickets list and write layout rows down table grid
+    async function fetchTickets() {
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/tickets`);
+        if (!response.ok) {
+          throw new Error(`Tickets server responded with HTTP status ${response.status}`);
+        }
+        allTickets = await response.json();
+        renderTicketsList();
+      } catch (err) {
+        console.error('Failed to parse or render tickets:', err);
+        const tbody = document.getElementById('tickets-tbody');
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="empty-state" style="color: var(--red-800);">Failed to load tickets from database server.</td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderTicketsList() {
+      const tbody = document.getElementById('tickets-tbody');
+      tbody.innerHTML = ''; // reset loader
+
+      const searchQuery = document.getElementById('admin-ticket-search').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('admin-ticket-filter-status').value;
+      const categoryFilter = document.getElementById('admin-ticket-filter-category').value;
+
+      let filteredTickets = allTickets.filter(ticket => {
+        // Search text matching student_id or unresolved_inquiry
+        const matchesSearch = !searchQuery || 
+          (ticket.student_id && ticket.student_id.toLowerCase().includes(searchQuery)) ||
+          (ticket.unresolved_inquiry && ticket.unresolved_inquiry.toLowerCase().includes(searchQuery));
+
+        // Status matching
+        const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
+
+        // Category matching
+        const ticketCategory = ticket.category || getTicketCategory(ticket.unresolved_inquiry);
+        const matchesCategory = categoryFilter === 'All' || ticketCategory === categoryFilter;
+
+        return matchesSearch && matchesStatus && matchesCategory;
+      });
+
+      if (filteredTickets.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="empty-state">No support tickets match the selected filters.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      filteredTickets.forEach(ticket => {
+        const tr = document.createElement('tr');
+        tr.id = `ticket-row-${ticket.id}`;
+
+        // Student ID
+        const tdStudent = document.createElement('td');
+        tdStudent.className = 'font-semibold text-slate-800';
+        tdStudent.textContent = ticket.student_id;
+        
+        // Unresolved Inquiry
+        const tdInquiry = document.createElement('td');
+        tdInquiry.className = 'text-slate-600 max-w-md';
+        
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'text-slate-600 truncate-2-lines';
+        questionDiv.textContent = ticket.unresolved_inquiry;
+        questionDiv.title = ticket.unresolved_inquiry;
+        tdInquiry.appendChild(questionDiv);
+
+        if (ticket.status === 'Pending') {
+          const replyBox = document.createElement('textarea');
+          replyBox.id = `reply-box-${ticket.id}`;
+          replyBox.className = 'admin-reply-box';
+          replyBox.placeholder = 'Type Admin Reply...';
+          replyBox.style.width = '100%';
+          replyBox.style.marginTop = '8px';
+          replyBox.style.padding = '8px';
+          replyBox.style.border = '1px solid var(--border)';
+          replyBox.style.borderRadius = 'var(--radius-sm)';
+          replyBox.style.fontFamily = 'inherit';
+          replyBox.style.fontSize = '13px';
+          replyBox.style.resize = 'vertical';
+          replyBox.style.outline = 'none';
+          tdInquiry.appendChild(replyBox);
+        } else if (ticket.admin_reply) {
+          const replyText = document.createElement('div');
+          replyText.style.marginTop = '6px';
+          replyText.style.fontSize = '13px';
+          replyText.style.color = 'var(--emerald-800)';
+          replyText.style.fontWeight = '500';
+          replyText.textContent = `Admin Reply: ${ticket.admin_reply}`;
+          tdInquiry.appendChild(replyText);
+        }
+
+        // Priority badge
+        const tdPriority = document.createElement('td');
+        const pBadge = document.createElement('span');
+        const pVal = ticket.priority || 'Medium';
+        pBadge.className = `badge badge-${pVal.toLowerCase()}`;
+        pBadge.textContent = pVal;
+        tdPriority.appendChild(pBadge);
+
+        // Status Badge
+        const tdStatus = document.createElement('td');
+        const sBadge = document.createElement('span');
+        sBadge.className = ticket.status === 'Pending' ? 'badge badge-pending' : 'badge badge-resolved';
+        sBadge.textContent = ticket.status;
+        tdStatus.appendChild(sBadge);
+
+        // Action column
+        const tdAction = document.createElement('td');
+        if (ticket.status === 'Pending') {
+          const btn = document.createElement('button');
+          btn.className = 'btn-action btn-resolve';
+          btn.innerHTML = `
+            <svg style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; margin-right: 4px;" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Mark Resolved
+          `;
+          btn.onclick = () => resolveTicketAction(ticket.id, btn);
+          tdAction.appendChild(btn);
+        } else {
+          const rLabel = document.createElement('span');
+          rLabel.className = 'text-resolved-check';
+          rLabel.innerHTML = `
+            <svg style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5;" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Resolved
+          `;
+          tdAction.appendChild(rLabel);
+        }
+
+        tr.appendChild(tdStudent);
+        tr.appendChild(tdInquiry);
+        tr.appendChild(tdPriority);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // PUT resolve action execution
+    async function resolveTicketAction(id, buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = 'Updating...';
+
+      // Grab reply text from the specific input/textarea in the row
+      const replyBox = document.getElementById(`reply-box-${id}`);
+      const adminReplyText = replyBox ? replyBox.value.trim() : '';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/tickets/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            status: 'Resolved',
+            admin_reply: adminReplyText
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Resolve ticket server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          showToast('Ticket marked resolved successfully!');
+          
+          // Update status locally in allTickets array
+          const targetTicket = allTickets.find(t => t.id === id);
+          if (targetTicket) {
+            targetTicket.status = 'Resolved';
+            targetTicket.admin_reply = adminReplyText;
+          }
+
+          // Re-render current filtered view dynamically
+          renderTicketsList();
+
+          // Silently trigger updates of statistics cards & chart instances seamlessly
+          syncDashboardData();
+        } else {
+          showToast('Server update failed: ' + (data.message || 'Error occurred.'));
+          buttonElement.disabled = false;
+          buttonElement.innerHTML = 'Mark Resolved';
+        }
+
+      } catch (err) {
+        console.error('Failed to resolve support ticket:', err);
+        showToast('Network error while marking ticket resolved.');
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = 'Mark Resolved';
+      }
+    }
+
+    // Sidebar panel toggle script logic
+    const btnOverview = document.getElementById('btn-overview');
+    const btnKnowledge = document.getElementById('btn-knowledge');
+    const btnTickets = document.getElementById('btn-tickets');
+    const btnSettings = document.getElementById('btn-settings');
+    const overviewPanel = document.getElementById('overview-panel');
+    const knowledgePanel = document.getElementById('knowledge-panel');
+    const ticketsPanel = document.getElementById('admin-tickets-panel');
+    const settingsPanel = document.getElementById('settings-panel');
+
+    const allPanels = [overviewPanel, knowledgePanel, ticketsPanel, settingsPanel];
+    const allNavBtns = [btnOverview, btnKnowledge, btnTickets, btnSettings];
+
+    function toggleView(panel) {
+      // Hide all panels and deactivate all nav buttons
+      allPanels.forEach(p => {
+        if (p) p.style.display = 'none';
+      });
+      allNavBtns.forEach(b => {
+        if (b) b.classList.remove('active');
+      });
+
+      // Activate requested panel
+      if (panel === 'overview') {
+        overviewPanel.style.display = 'block';
+        btnOverview.classList.add('active');
+      } else if (panel === 'knowledge') {
+        knowledgePanel.style.display = 'block';
+        btnKnowledge.classList.add('active');
+      } else if (panel === 'tickets') {
+        ticketsPanel.style.display = 'block';
+        btnTickets.classList.add('active');
+      } else if (panel === 'settings') {
+        settingsPanel.style.display = 'block';
+        btnSettings.classList.add('active');
+      }
+    }
+
+    btnOverview.addEventListener('click', () => toggleView('overview'));
+    btnKnowledge.addEventListener('click', () => toggleView('knowledge'));
+    btnTickets.addEventListener('click', () => toggleView('tickets'));
+    btnSettings.addEventListener('click', () => toggleView('settings'));
+
+    // ── Knowledge Base Form Submission Logic ─────────────────────────────
+    document.getElementById('knowledge-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const category = document.getElementById('kb-category').value;
+      const title = document.getElementById('kb-title').value.trim();
+      const content = document.getElementById('kb-content').value.trim();
+      const statusEl = document.getElementById('publish-status');
+      const publishBtn = document.getElementById('btn-publish');
+
+      // Reset status
+      statusEl.className = 'publish-status';
+      statusEl.style.display = 'none';
+
+      if (!category || !title || !content) {
+        statusEl.className = 'publish-status error';
+        statusEl.innerHTML = `
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <span>Please fill in all required fields before publishing.</span>
+        `;
+        return;
+      }
+
+      // Disable button and show processing state
+      publishBtn.disabled = true;
+      const originalHTML = publishBtn.innerHTML;
+      publishBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+        Embedding & Saving…
+      `;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/knowledge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category, title, content })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Show inline success
+          statusEl.className = 'publish-status success';
+          statusEl.innerHTML = `
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span><strong>"${title}"</strong> has been published to the AI brain successfully! The chatbot can now reference this policy.</span>
+          `;
+
+          // Show toast
+          showToast('Knowledge base updated successfully!');
+
+          // Clear form fields
+          document.getElementById('kb-category').selectedIndex = 0;
+          document.getElementById('kb-title').value = '';
+          document.getElementById('kb-content').value = '';
+
+          // Background sync — refresh dashboard stats and knowledge records table
+          syncDashboardData();
+          loadHandbookRecords();
+
+          // Auto-hide success message after 6 seconds
+          setTimeout(() => {
+            statusEl.style.display = 'none';
+            statusEl.className = 'publish-status';
+          }, 6000);
+
+        } else {
+          statusEl.className = 'publish-status error';
+          statusEl.innerHTML = `
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            <span>Failed to publish: ${data.message || 'Unknown error occurred.'}</span>
+          `;
+        }
+
+      } catch (err) {
+        console.error('Knowledge publish error:', err);
+        statusEl.className = 'publish-status error';
+        statusEl.innerHTML = `
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <span>Network error — could not reach the server. Please check your connection.</span>
+        `;
+      } finally {
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = originalHTML;
+      }
+    });
+
+    // Bind Sync Data button click event listener directly
+    document.getElementById('refresh-button').addEventListener('click', async () => {
+      const btn = document.getElementById('refresh-button');
+      btn.disabled = true;
+      btn.innerHTML = 'Syncing...';
+      
+      await Promise.all([
+        syncDashboardData(),
+        fetchTickets()
+      ]);
+      
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Sync Data
+      `;
+      showToast('Dashboard details synced with database.');
+    });
+
+    // ── Load and Render Knowledge Base Records ──────────────────────────
+    async function loadHandbookRecords() {
+      const tbody = document.getElementById('kb-records-tbody');
+      const countBadge = document.getElementById('kb-record-count');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/knowledge`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const records = await response.json();
+        tbody.innerHTML = '';
+
+        if (!records || records.length === 0) {
+          countBadge.textContent = '0 entries';
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="kb-empty-state">No handbook records found in the knowledge base.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        countBadge.textContent = `${records.length} ${records.length === 1 ? 'entry' : 'entries'}`;
+
+        records.forEach(record => {
+          const tr = document.createElement('tr');
+          tr.id = `kb-row-${record.id}`;
+
+          // ID
+          const tdId = document.createElement('td');
+          tdId.className = 'kb-id';
+          tdId.textContent = record.id;
+
+          // Category
+          const tdCat = document.createElement('td');
+          const catTag = document.createElement('span');
+          catTag.className = 'kb-category-tag';
+          catTag.textContent = record.category;
+          tdCat.appendChild(catTag);
+
+          // Title
+          const tdTitle = document.createElement('td');
+          tdTitle.style.fontWeight = '500';
+          tdTitle.textContent = record.title;
+
+          // Action (Sleek Dropdown Menu)
+          const tdAction = document.createElement('td');
+          tdAction.style.textAlign = 'center';
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'custom-row-actions';
+
+          const trigger = document.createElement('button');
+          trigger.className = 'action-dot-trigger';
+          trigger.textContent = '⋮';
+          trigger.onclick = (e) => toggleRowMenu(e, record.id);
+          wrapper.appendChild(trigger);
+
+          const dropdown = document.createElement('div');
+          dropdown.id = `row-menu-${record.id}`;
+          dropdown.className = 'row-action-dropdown';
+          dropdown.style.display = 'none';
+
+          const editLink = document.createElement('a');
+          editLink.href = '#';
+          editLink.innerHTML = 'Edit';
+          editLink.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropdown.style.display = 'none';
+            openEditModal(record.id, record.category, record.title, record.content);
+          };
+          dropdown.appendChild(editLink);
+
+          const deleteLink = document.createElement('a');
+          deleteLink.href = '#';
+          deleteLink.style.color = '#ef4444';
+          deleteLink.innerHTML = 'Delete';
+          deleteLink.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropdown.style.display = 'none';
+            deleteTargetId = record.id;
+            deleteTargetTitle = record.title;
+            const descEl = document.getElementById('delete-modal-desc');
+            if (descEl) {
+              descEl.innerHTML = `Are you sure you want to delete this handbook policy?<br><br><strong style="color: #1e293b;">"${escapeHTML(record.title)}"</strong><br><br>This action cannot be undone.`;
+            }
+            document.getElementById('delete-modal').style.display = 'flex';
+          };
+          dropdown.appendChild(deleteLink);
+
+          wrapper.appendChild(dropdown);
+          tdAction.appendChild(wrapper);
+
+          tr.appendChild(tdId);
+          tr.appendChild(tdCat);
+          tr.appendChild(tdTitle);
+          tr.appendChild(tdAction);
+          tbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error('Failed to load handbook records:', err);
+        countBadge.textContent = 'Error';
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="kb-empty-state" style="color: var(--red-800);">Failed to load records from server.</td>
+          </tr>
+        `;
+      }
+    }
+
+    // Global variables for delete confirmation modal
+    let deleteTargetId = null;
+    let deleteTargetTitle = null;
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>'"]/g, 
+        tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[tag] || tag)
+      );
+    }
+
+    function toggleRowMenu(event, id) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const menu = document.getElementById(`row-menu-${id}`);
+      if (!menu) return;
+      const isVisible = menu.style.display === 'block';
+
+      // Close all other row menus first
+      document.querySelectorAll('.row-action-dropdown').forEach(dropdown => {
+        dropdown.style.display = 'none';
+      });
+
+      if (!isVisible) {
+        menu.style.display = 'block';
+      }
+    }
+
+    function openEditModal(id, category, title, content) {
+      document.getElementById('edit-policy-id').value = id;
+      document.getElementById('edit-policy-category').value = category || 'General Academic Policies';
+      document.getElementById('edit-policy-title').value = title || '';
+      document.getElementById('edit-policy-content').value = content || '';
+      document.getElementById('edit-policy-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-policy-id').value = '';
+      document.getElementById('edit-policy-category').selectedIndex = 0;
+      document.getElementById('edit-policy-title').value = '';
+      document.getElementById('edit-policy-content').value = '';
+      document.getElementById('edit-policy-modal').style.display = 'none';
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      deleteTargetTitle = null;
+      document.getElementById('delete-modal').style.display = 'none';
+    }
+
+    // Initialize Dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wire Cancel button
+      document.getElementById('btn-delete-cancel').addEventListener('click', closeDeleteModal);
+
+      // Wire Edit Modal Cancel button
+      document.getElementById('btn-edit-cancel').addEventListener('click', closeEditModal);
+
+      // Wire Edit Modal Background Overlay click
+      document.getElementById('edit-policy-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('edit-policy-modal')) {
+          closeEditModal();
+        }
+      });
+
+      // Wire Background Overlay click
+      document.getElementById('delete-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('delete-modal')) {
+          closeDeleteModal();
+        }
+      });
+
+      // Wire Delete Confirmation Button execution
+      document.getElementById('btn-delete-confirm').addEventListener('click', async () => {
+        if (!deleteTargetId) return;
+
+        const confirmBtn = document.getElementById('btn-delete-confirm');
+        const cancelBtn = document.getElementById('btn-delete-cancel');
+        
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        confirmBtn.innerHTML = 'Deleting…';
+
+        try {
+          const response = await fetch(`${API_BASE}/api/admin/knowledge/${deleteTargetId}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            showToast('Policy deleted successfully!');
+
+            // Remove row from table with fade animation
+            const row = document.getElementById(`kb-row-${deleteTargetId}`);
+            if (row) {
+              row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+              row.style.opacity = '0';
+              row.style.transform = 'translateX(20px)';
+              setTimeout(() => {
+                row.remove();
+
+                // Update count badge
+                const tbody = document.getElementById('kb-records-tbody');
+                const remaining = tbody.querySelectorAll('tr').length;
+                document.getElementById('kb-record-count').textContent = `${remaining} ${remaining === 1 ? 'entry' : 'entries'}`;
+
+                if (remaining === 0) {
+                  tbody.innerHTML = `
+                    <tr>
+                      <td colspan="4" class="kb-empty-state">No handbook records found in the knowledge base.</td>
+                    </tr>
+                  `;
+                  document.getElementById('kb-record-count').textContent = '0 entries';
+                }
+              }, 300);
+            }
+
+            // Sync dashboard stats to reflect updated count
+            syncDashboardData();
+
+          } else {
+            showToast('Delete failed: ' + (data.message || 'Unknown error.'));
+          }
+
+        } catch (err) {
+          console.error('Delete knowledge entry error:', err);
+          showToast('Network error — could not delete the policy.');
+        } finally {
+          confirmBtn.disabled = false;
+          cancelBtn.disabled = false;
+          confirmBtn.innerHTML = 'Delete Policy';
+          closeDeleteModal();
+        }
+      });
+
+      // Wire Edit Form Save execution
+      document.getElementById('edit-policy-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-policy-id').value;
+        const category = document.getElementById('edit-policy-category').value;
+        const title = document.getElementById('edit-policy-title').value.trim();
+        const content = document.getElementById('edit-policy-content').value.trim();
+
+        if (!id || !category || !title || !content) {
+          showToast('All fields are required.');
+          return;
+        }
+
+        const saveBtn = document.getElementById('btn-edit-save');
+        const cancelBtn = document.getElementById('btn-edit-cancel');
+
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+        saveBtn.innerHTML = 'Saving…';
+
+        try {
+          // Gathers edited values and runs update call to Supabase (via PUT endpoint wrapper)
+          const response = await fetch(`${API_BASE}/api/admin/knowledge/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ category, title, content })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            showToast('Handbook policy updated successfully!');
+            
+            // Trigger background call to server re-vectorization route so the Gemini AI brain stays synced
+            fetch(`${API_BASE}/api/admin/knowledge/${id}/revectorize`, { method: 'POST' })
+              .then(res => res.json())
+              .then(vectorData => {
+                if (vectorData.success) {
+                  console.log('Gemini AI brain re-vectorization successful.');
+                  showToast('AI brain re-vectorized and synced successfully!');
+                } else {
+                  console.error('Re-vectorization failed:', vectorData.message);
+                  showToast('AI brain sync warning: ' + vectorData.message);
+                }
+              })
+              .catch(err => {
+                console.error('Re-vectorization network error:', err);
+                showToast('AI brain vector sync network error.');
+              });
+
+            closeEditModal();
+            loadHandbookRecords();
+            syncDashboardData();
+          } else {
+            showToast('Update failed: ' + (data.message || 'Unknown error.'));
+          }
+        } catch (err) {
+          console.error('Update knowledge entry error:', err);
+          showToast('Network error — could not update the policy.');
+        } finally {
+          saveBtn.disabled = false;
+          cancelBtn.disabled = false;
+          saveBtn.innerHTML = 'Update AI Brain';
+        }
+      });
+
+      // Close dropdown menus when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('action-dot-trigger')) {
+          document.querySelectorAll('.row-action-dropdown').forEach(dropdown => {
+            dropdown.style.display = 'none';
+          });
+        }
+      });
+
+      // Wire up filter controls for Tickets panel
+      const ticketSearch = document.getElementById('admin-ticket-search');
+      const ticketFilterStatus = document.getElementById('admin-ticket-filter-status');
+      const ticketFilterCategory = document.getElementById('admin-ticket-filter-category');
+
+      if (ticketSearch) ticketSearch.addEventListener('input', renderTicketsList);
+      if (ticketFilterStatus) ticketFilterStatus.addEventListener('change', renderTicketsList);
+      if (ticketFilterCategory) ticketFilterCategory.addEventListener('change', renderTicketsList);
+
+      try {
+        syncDashboardData();
+      } catch (err) {
+        console.error('Failed to sync dashboard data:', err);
+      }
+      try {
+        fetchTickets();
+      } catch (err) {
+        console.error('Failed to fetch tickets:', err);
+      }
+      try {
+        loadHandbookRecords();
+      } catch (err) {
+        console.error('Failed to load handbook records:', err);
+      }
+    });
+  </script>
+
+  <!-- Custom Confirmation Modal -->
+  <div id="delete-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h2 class="modal-title">Confirm Deletion</h2>
+      <p class="modal-desc" id="delete-modal-desc">Are you sure you want to delete this handbook policy? This action is permanent and cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="btn-delete-cancel" class="btn-modal btn-cancel">Cancel</button>
+        <button id="btn-delete-confirm" class="btn-modal btn-delete-confirm">Delete Policy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Policy Modal -->
+  <div id="edit-policy-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="width: 600px; max-width: 95%; text-align: left;">
+      <h2 class="modal-title" style="text-align: left; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; font-size: 18px;">✏️ Edit Handbook Policy</h2>
+      <form id="edit-policy-form" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="edit-policy-id" />
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="edit-policy-category" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Category</label>
+          <select id="edit-policy-category" class="form-select" style="background: var(--bg-white); width: 100%;">
+            <option value="General Academic Policies">General Academic Policies</option>
+            <option value="Admission">Admission</option>
+            <option value="Course Offering">Course Offering</option>
+            <option value="Scheduling">Scheduling</option>
+            <option value="Student Services">Student Services</option>
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="edit-policy-title" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Policy Title</label>
+          <input type="text" id="edit-policy-title" class="form-input" style="background: var(--bg-white); width: 100%;" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="edit-policy-content" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Policy Content</label>
+          <textarea id="edit-policy-content" class="form-textarea" rows="8" style="background: var(--bg-white); width: 100%; resize: vertical; min-height: 180px;"></textarea>
+        </div>
+        <div class="modal-actions" style="margin-top: 10px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" id="btn-edit-cancel" class="btn-modal btn-cancel" style="flex: none; min-width: 100px;">Cancel</button>
+          <button type="submit" id="btn-edit-save" class="btn-modal btn-resolve" style="flex: none; min-width: 140px; background: var(--brand-accent); color: #ffffff;">Update AI Brain</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
