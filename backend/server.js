@@ -16,6 +16,7 @@ import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
+import bcrypt from "bcrypt";
 import { fileURLToPath } from "url";
 
 const require = createRequire(import.meta.url);
@@ -556,22 +557,44 @@ app.post("/api/auth/signin", async (req, res) => {
 
     // 2. ADD THE ADMIN PATTERN INTERCEPTION GATEWAY:
     if (studentId.toUpperCase().startsWith('ADM')) {
-      const targetId = "ADM20260001";
+      console.log(`🔒 Admin authentication pattern detected for ID: ${studentId}`);
+      
+      try {
+        // Fetch the admin profile from our database
+        const { data: user, error: dbError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('student_id', studentId)
+          .single();
 
-      if (studentId.toUpperCase() === targetId.toUpperCase()) {
-        console.log(`🔒 Admin authenticated successfully via signin gateway: ${studentId}`);
+        if (dbError || !user) {
+          console.log(`⚠️ Admin validation failed. ID not found in database: ${studentId}`);
+          return res.status(401).json({
+            success: false,
+            error: "Invalid administrator credentials. Access denied."
+          });
+        }
+
+        // Verify the secure bcrypt password hash
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          console.log(`❌ Admin password mismatch for ID: ${studentId}`);
+          return res.status(401).json({
+            success: false,
+            error: "Invalid administrator credentials. Access denied."
+          });
+        }
+
+        console.log(`👑 Admin authenticated successfully via Database: ${studentId}`);
         return res.json({
           success: true,
           message: "Admin access verified!",
           role: "admin"
         });
-      } else {
-        console.log(`⚠️ Admin validation failed for ID: ${studentId}`);
-        return res.status(401).json({
-          success: false,
-          error: "Invalid administrator credentials. Access denied.",
-          message: "Invalid administrator credentials. Access denied."
-        });
+
+      } catch (err) {
+        console.error("🔥 Fatal Admin Gateway Error:", err.message);
+        return res.status(500).json({ success: false, error: "Internal server gateway error." });
       }
     }
 
