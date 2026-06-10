@@ -383,7 +383,7 @@ app.post("/api/chat", async (req, res) => {
     // ── Step 2: Execute remote database semantic query ────────────────────
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
-        match_threshold: 0.1, // Relaxed threshold for testing
+        match_threshold: -1.0, // Bypass positive boundary filter for testing
         match_count: 4
     });
 
@@ -391,6 +391,13 @@ app.post("/api/chat", async (req, res) => {
         console.error("❌ Supabase RPC Execution Error:", dbError.message);
     } else {
         console.log(`📊 SUCCESS: Vector search returned ${dbData ? dbData.length : 0} row matches from the cloud database!`);
+    }
+
+    if (dbData && dbData.length > 0) {
+        console.log("🔗 RAW VECTOR SCORES DETECTED:");
+        dbData.forEach((row, index) => {
+            console.log(`   👉 Match [${index + 1}] | Title: ${row.title} | Similarity Score: ${row.similarity}`);
+        });
     }
 
     const contextText = dbData && dbData.length > 0 
