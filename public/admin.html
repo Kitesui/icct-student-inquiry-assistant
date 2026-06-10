@@ -1385,6 +1385,12 @@
     .p-2 { padding: 8px !important; }
     .rounded-lg { border-radius: 8px !important; }
     .text-sm { font-size: 14px !important; }
+    .select-none { user-select: none !important; }
+    .inline-flex { display: inline-flex !important; }
+    .justify-center { justify-content: center !important; }
+    .mx-auto { margin-left: auto !important; margin-right: auto !important; }
+    .space-x-1 > * + * { margin-left: 4px !important; }
+    .text-emerald-600 { color: #059669 !important; }
   </style>
 </head>
 <body>
@@ -1559,8 +1565,8 @@
                     <th class="w-[15%] px-4 py-3 align-middle font-semibold text-slate-700">STUDENT ID</th>
                     <th class="w-[45%] px-4 py-3 align-middle font-semibold text-slate-700">UNRESOLVED INQUIRY</th>
                     <th class="w-[10%] px-4 py-3 text-center align-middle font-semibold text-slate-700">PRIORITY</th>
-                    <th class="w-[15%] px-4 py-3 text-center align-middle font-semibold text-slate-700">STATUS</th>
-                    <th class="w-[15%] px-4 py-3 text-center align-middle font-semibold text-slate-700">ACTION</th>
+                    <th class="w-[15%] px-4 py-3 text-center font-semibold text-slate-700 select-none">STATUS</th>
+                    <th class="w-[15%] px-4 py-3 text-center font-semibold text-slate-700 select-none">ACTION</th>
                   </tr>
                 </thead>
                 <tbody id="tickets-tbody">
@@ -2014,9 +2020,9 @@
 
         // Priority badge
         const tdPriority = document.createElement('td');
-        tdPriority.className = 'w-[10%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
+        tdPriority.className = 'w-[10%] px-4 py-3 text-center align-middle';
         const priorityWrapper = document.createElement('div');
-        priorityWrapper.className = 'min-h-[44px] flex items-center w-full';
+        priorityWrapper.className = 'min-h-[44px] flex items-center justify-center w-full';
         const pBadge = document.createElement('span');
         const pVal = ticket.priority || 'Medium';
         pBadge.className = `badge badge-${pVal.toLowerCase()}`;
@@ -2026,20 +2032,23 @@
 
         // Status Badge
         const tdStatus = document.createElement('td');
-        tdStatus.className = 'w-[15%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
+        tdStatus.className = 'w-[15%] px-4 py-3 text-center align-middle';
         const statusWrapper = document.createElement('div');
-        statusWrapper.className = 'min-h-[44px] flex items-center w-full';
+        statusWrapper.className = 'min-h-[44px] flex items-center justify-center w-full';
+        const statusOuter = document.createElement('span');
+        statusOuter.className = 'inline-flex justify-center items-center text-center mx-auto';
         const sBadge = document.createElement('span');
         sBadge.className = ticket.status === 'Pending' ? 'badge badge-pending' : 'badge badge-resolved';
         sBadge.textContent = ticket.status;
-        statusWrapper.appendChild(sBadge);
+        statusOuter.appendChild(sBadge);
+        statusWrapper.appendChild(statusOuter);
         tdStatus.appendChild(statusWrapper);
 
         // Action column
         const tdAction = document.createElement('td');
-        tdAction.className = 'w-[15%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
+        tdAction.className = 'w-[15%] px-4 py-3 text-center align-middle';
         const actionWrapper = document.createElement('div');
-        actionWrapper.className = 'min-h-[44px] flex items-center w-full';
+        actionWrapper.className = 'min-h-[44px] flex items-center justify-center w-full';
         if (ticket.status === 'Pending') {
           const btn = document.createElement('button');
           btn.className = 'btn-action btn-resolve';
@@ -2053,13 +2062,8 @@
           actionWrapper.appendChild(btn);
         } else {
           const rLabel = document.createElement('span');
-          rLabel.className = 'text-resolved-check';
-          rLabel.innerHTML = `
-            <svg style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5;" viewBox="0 0 24 24">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Resolved
-          `;
+          rLabel.className = 'inline-flex items-center justify-center space-x-1 mx-auto text-emerald-600 font-medium';
+          rLabel.innerHTML = `<span>✓</span><span>Resolved</span>`;
           actionWrapper.appendChild(rLabel);
         }
         tdAction.appendChild(actionWrapper);
