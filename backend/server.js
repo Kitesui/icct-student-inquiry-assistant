@@ -366,21 +366,35 @@ app.post("/api/chat", async (req, res) => {
     }]);
 
     // ── Step 1: Compute the incoming message vector ─────────────────────
-    const queryEmbedding = await embedWithRetry(message);
+    const query = message;
+    const embeddingResponse = await ai.models.embedContent({
+        model: "gemini-embedding-001",
+        contents: query,
+        config: { outputDimensionality: 1536 }
+    });
+    const queryEmbedding = embeddingResponse.embeddings[0].values;
 
     // ── Step 2: Execute remote database semantic query ────────────────────
+    console.log("--- CHAT DEBUG METRICS ---");
+    console.log("Query Vector Size:", queryEmbedding ? queryEmbedding.length : "NULL");
+   
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.1, // Loosened threshold for cloud precision
-      match_count: 5
+        query_embedding: queryEmbedding,
+        match_threshold: 0.1,
+        match_count: 5
     });
 
     if (dbError) {
-      console.error("❌ Supabase RPC error:", dbError.message);
+        console.error("Supabase Error Code:", dbError.code, "-", dbError.message);
+    } else {
+        console.log("Database Chunks Found:", dbData ? dbData.length : 0);
     }
-
-    console.log(`\n💬 User: "${message}"`);
-    console.log(`🔍 Vector search returned ${dbData?.length ?? 0} match(es).`);
+   
+    const contextText = dbData && dbData.length > 0 
+        ? dbData.map(row => row.content).join('\n\n') 
+        : "";
+       
+    console.log("--------------------------");
 
     // ── Step 3: Feed context to Gemini or activate fallback ──────────────
     if (!dbData || dbData.length === 0) {
@@ -403,10 +417,6 @@ app.post("/api/chat", async (req, res) => {
         unresolvedInquiry: message
       });
     }
-
-    const contextText = dbData && dbData.length > 0 
-        ? dbData.map(row => row.content).join('\n\n') 
-        : "";
     
     // References using category and title
     const references = dbData.map(chunk => `[Category: ${chunk.category} | Title: ${chunk.title}]`).join(', ');
