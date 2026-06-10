@@ -2903,16 +2903,28 @@
 
         const ticketStatus = document.getElementById('ticket-status-notification');
         if (ticketStatus) {
+            ticketStatus.classList.remove('hidden');
+            ticketStatus.style.display = "flex"; // Ensure visible
+            ticketStatus.style.opacity = "1";    // Ensure fully opaque
             ticketStatus.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 animate-bounce border border-slate-700 z-50";
             ticketStatus.innerHTML = `
                 <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <span class="font-medium text-sm text-slate-100">Support ticket successfully filed with the ICCT Administration!</span>
             `;
             
-            // Automatically fade it away after 3 seconds
+            // Fade out smoothly, then remove or hide completely
+            ticketStatus.style.transition = "opacity 0.5s ease";
+            
             setTimeout(() => {
-                ticketStatus.classList.add('hidden');
-            }, 3000);
+                ticketStatus.style.opacity = "0"; // Start smooth fade out
+                
+                setTimeout(() => {
+                    // Explicitly set display none to completely clear the screen space
+                    ticketStatus.style.display = "none"; 
+                    // Clear the inner text content out entirely
+                    ticketStatus.innerHTML = ""; 
+                }, 500); // Wait for the 0.5s fade out transition animation to finish
+            }, 3000); // Display the success banner for exactly 3 seconds before starting fade
         }
         btn.remove();
         loadStudentTickets();
