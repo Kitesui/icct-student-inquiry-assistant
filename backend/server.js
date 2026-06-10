@@ -391,27 +391,29 @@ app.post("/api/chat", async (req, res) => {
     }
 
     if (!dbData || dbData.length === 0) {
-        console.log("🔄 RPC returned 0. Running direct semantic keyword verification scan...");
-        
-        // Clean the user's string to parse key topics
+        console.log("🔄 RPC returned 0. Accessing pre-loaded server memory array datasets...");
         const cleanQuery = query.toLowerCase();
         
-        const { data: fallbackData, error: fallbackError } = await supabase
-            .from('school_knowledge')
-            .select('id, category, title, content');
-            
-        if (!fallbackError && fallbackData) {
-            // Filter the rows locally to see if they contain key terms from the question
-            const filteredRows = fallbackData.filter(row => 
-                row.content.toLowerCase().includes(cleanQuery) ||
-                row.title.toLowerCase().includes(cleanQuery) ||
-                row.category.toLowerCase().includes(cleanQuery)
-            ).slice(0, 4);
+        if (typeof globalKnowledgeBase !== 'undefined' && globalKnowledgeBase.length > 0) {
+            const filteredRows = globalKnowledgeBase.filter(row => {
+                const contentVal = row.content || row.context || "";
+                const titleVal = row.title || row.topic || "";
+                const categoryVal = row.category || row.keywords || "";
+                return contentVal.toLowerCase().includes(cleanQuery) ||
+                       titleVal.toLowerCase().includes(cleanQuery) ||
+                       categoryVal.toLowerCase().includes(cleanQuery);
+            }).slice(0, 4).map(row => ({
+                category: row.category || row.keywords || "",
+                title: row.title || row.topic || "",
+                content: row.content || row.context || ""
+            }));
             
             if (filteredRows.length > 0) {
-                console.log(`🎯 Backup engine successfully retrieved ${filteredRows.length} rows directly from the table space!`);
-                dbData = filteredRows; // Swap the empty data with our active table records
+                console.log(`🎯 Memory engine successfully matched ${filteredRows.length} chunks from local CSV cache!`);
+                dbData = filteredRows;
             }
+        } else {
+            console.log("❌ Warning: Global memory array variable name mismatch or empty.");
         }
     }
    
