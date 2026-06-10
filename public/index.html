@@ -1428,14 +1428,18 @@
       }
     }
 
-    /* By default on desktop, hide the mobile dots and dropdown */
-    .mobile-menu-dots {
-      display: none;
-    }
-    .history-dropdown-menu {
-      display: none;
-    }
-
+    /* Slide-in toast notification styles */
+    .px-5 { padding-left: 20px !important; padding-right: 20px !important; }
+    .py-3\.5 { padding-top: 14px !important; padding-bottom: 14px !important; }
+    .rounded-xl { border-radius: 12px !important; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; }
+    .space-x-3 > * + * { margin-left: 12px !important; }
+    .border-slate-800 { border-color: #1e293b !important; }
+    .transform { transform: translateY(var(--tw-translate-y, 0)) !important; }
+    .transition-all { transition: all 500ms cubic-bezier(0, 0, 0.2, 1) !important; }
+    .ease-out { transition-timing-function: cubic-bezier(0, 0, 0.2, 1) !important; }
+    .translate-y-0 { --tw-translate-y: 0px; }
+    .opacity-100 { opacity: 1 !important; }
   </style>
 </head>
 
@@ -2906,17 +2910,18 @@
             ticketStatus.classList.remove('hidden');
             ticketStatus.style.display = "flex"; // Ensure visible
             ticketStatus.style.opacity = "1";    // Ensure fully opaque
-            ticketStatus.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 animate-bounce border border-slate-700 z-50";
+            ticketStatus.className = "fixed bottom-5 right-5 bg-slate-900 text-slate-100 px-5 py-3.5 rounded-xl shadow-2xl flex items-center space-x-3 border border-slate-800 z-50 transform transition-all duration-500 ease-out translate-y-0 opacity-100";
             ticketStatus.innerHTML = `
                 <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <span class="font-medium text-sm text-slate-100">Support ticket successfully filed with the ICCT Administration!</span>
             `;
             
             // Fade out smoothly, then remove or hide completely
-            ticketStatus.style.transition = "opacity 0.5s ease";
+            ticketStatus.style.transition = "opacity 0.5s ease, transform 0.5s ease";
             
             setTimeout(() => {
-                ticketStatus.style.opacity = "0"; // Start smooth fade out
+                ticketStatus.style.transform = "translateY(20px)";
+                ticketStatus.style.opacity = "0";
                 
                 setTimeout(() => {
                     // Explicitly set display none to completely clear the screen space
