@@ -378,7 +378,7 @@ app.post("/api/chat", async (req, res) => {
     console.log("--- CHAT DEBUG METRICS ---");
     console.log("Query Vector Size:", queryEmbedding ? queryEmbedding.length : "NULL");
    
-    const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
+    let { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
         match_threshold: 0.1,
         match_count: 5
@@ -388,6 +388,31 @@ app.post("/api/chat", async (req, res) => {
         console.error("Supabase Error Code:", dbError.code, "-", dbError.message);
     } else {
         console.log("Database Chunks Found:", dbData ? dbData.length : 0);
+    }
+
+    if (!dbData || dbData.length === 0) {
+        console.log("🔄 RPC returned 0. Running direct semantic keyword verification scan...");
+        
+        // Clean the user's string to parse key topics
+        const cleanQuery = query.toLowerCase();
+        
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from('school_knowledge')
+            .select('id, category, title, content');
+            
+        if (!fallbackError && fallbackData) {
+            // Filter the rows locally to see if they contain key terms from the question
+            const filteredRows = fallbackData.filter(row => 
+                row.content.toLowerCase().includes(cleanQuery) ||
+                row.title.toLowerCase().includes(cleanQuery) ||
+                row.category.toLowerCase().includes(cleanQuery)
+            ).slice(0, 4);
+            
+            if (filteredRows.length > 0) {
+                console.log(`🎯 Backup engine successfully retrieved ${filteredRows.length} rows directly from the table space!`);
+                dbData = filteredRows; // Swap the empty data with our active table records
+            }
+        }
     }
    
     const contextText = dbData && dbData.length > 0 
