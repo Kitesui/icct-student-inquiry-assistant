@@ -2884,10 +2884,16 @@
         const data = await res.json();
 
         if (res.status === 400) {
-          // Rule violation: intercept the error message and display to student
-          alert(data.message || "Submission Blocked: You currently have 3 pending support tickets.");
-          btn.disabled = false;
-          btn.textContent = "🎟️ Submit Support Ticket";
+          // Rule violation: intercept the error message and display to student via inline banner
+          const errorMessage = data.message || "You have reached your maximum limit of pending support tickets.";
+          btn.outerHTML = `
+            <div class="ticket-limit-banner" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; max-width: 100%; animation: fadeIn 0.3s ease both;">
+              <svg style="color: #ef4444; flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <span>${errorMessage}</span>
+            </div>
+          `;
           return;
         }
 
@@ -2913,9 +2919,15 @@
 
       } catch (err) {
         console.error("Submit ticket error:", err);
-        alert(err.message || "Connection error. Please try again later.");
-        btn.disabled = false;
-        btn.textContent = "🎟️ Submit Support Ticket";
+        const errorMessage = err.message || "Connection error. Please try again later.";
+        btn.outerHTML = `
+          <div class="ticket-limit-banner" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; max-width: 100%; animation: fadeIn 0.3s ease both;">
+            <svg style="color: #ef4444; flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span>${errorMessage}</span>
+          </div>
+        `;
       }
     }
   });
