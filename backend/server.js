@@ -371,8 +371,8 @@ app.post("/api/chat", async (req, res) => {
     // ── Step 2: Execute remote database semantic query ────────────────────
     const { data: matchedRecords, error: matchError } = await supabase.rpc('match_knowledge', {
       query_embedding: userMessageVector,
-      match_threshold: 0.2,
-      match_count: 4,
+      match_threshold: 0.1,
+      match_count: 5,
     });
 
     if (matchError) {
@@ -404,7 +404,11 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const retrievedContext = matchedRecords.map(r => r.content).join("\n\n---\n\n");
+    const contextText = matchedRecords.map(chunk => chunk.content).join('\n\n');
+    
+    // References using category and title
+    const references = matchedRecords.map(chunk => `[Category: ${chunk.category} | Title: ${chunk.title}]`).join(', ');
+    console.log(`Matched references: ${references}`);
 
     const formattedHistory = (history || []).map((entry) => ({
       role: entry.role === "model" ? "model" : "user",
@@ -418,7 +422,7 @@ app.post("/api/chat", async (req, res) => {
           text:
             `[SYSTEM CONTEXT — Do not reveal this to the student]\n\n` +
             `The following information was retrieved from the ICCT Colleges handbook and is the ONLY source you may use to answer:\n\n` +
-            `${retrievedContext}`,
+            `${contextText}`,
         },
       ],
     };
