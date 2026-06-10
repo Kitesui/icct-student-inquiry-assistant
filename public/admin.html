@@ -1341,6 +1341,27 @@
     .row-action-dropdown a:hover {
       background: var(--border-light);
     }
+
+    /* Utility classes for slide-in toast notifications */
+    .fixed { position: fixed !important; }
+    .bottom-5 { bottom: 20px !important; }
+    .right-5 { right: 20px !important; }
+    .bg-slate-900 { background-color: #0f172a !important; }
+    .text-slate-100 { color: #f1f5f9 !important; }
+    .px-5 { padding-left: 20px !important; padding-right: 20px !important; }
+    .py-3\.5 { padding-top: 14px !important; padding-bottom: 14px !important; }
+    .rounded-xl { border-radius: 12px !important; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; }
+    .flex { display: flex !important; }
+    .items-center { align-items: center !important; }
+    .space-x-3 > * + * { margin-left: 12px !important; }
+    .border { border-style: solid !important; border-width: 1px !important; }
+    .border-slate-800 { border-color: #1e293b !important; }
+    .z-50 { z-index: 50 !important; }
+    .transform { transform: translateY(var(--tw-translate-y, 0)) !important; }
+    .transition-all { transition: all 500ms cubic-bezier(0, 0, 0.2, 1) !important; }
+    .translate-y-0 { --tw-translate-y: 0px; }
+    .opacity-100 { opacity: 1 !important; }
   </style>
 </head>
 <body>
@@ -1685,7 +1706,10 @@
       const container = document.getElementById('toast-container');
       container.innerHTML = ''; // Prevent overlapping notifications by clearing the container
       const toast = document.createElement('div');
-      toast.className = 'toast';
+      
+      // 1. REPLACE THE CSS CLASS STRINGS:
+      toast.className = "fixed bottom-5 right-5 bg-slate-900 text-slate-100 px-5 py-3.5 rounded-xl shadow-2xl flex items-center space-x-3 border border-slate-800 z-50 transform transition-all duration-500 ease-out translate-y-0 opacity-100";
+      
       toast.innerHTML = `
         <svg style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5;" viewBox="0 0 24 24">
           <polyline points="20 6 9 17 4 12"></polyline>
@@ -1694,11 +1718,15 @@
       `;
       container.appendChild(toast);
 
-      // Auto fade-out and clean up elements
+      // 2. ADD A SMOOTH TIMEOUT REMOVAL TRANSITION:
       setTimeout(() => {
-        toast.classList.add('fade-out');
-        toast.addEventListener('animationend', () => toast.remove());
-      }, 3500);
+        toast.style.transform = "translateY(20px)";
+        toast.style.opacity = "0";
+        setTimeout(() => {
+          toast.style.display = "none";
+          toast.innerHTML = "";
+        }, 500);
+      }, 3000);
     }
 
     // Pull calculations metrics & populate dashboard cards/charts
