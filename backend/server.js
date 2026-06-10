@@ -941,7 +941,8 @@ app.get("/api/student/tickets/:studentId", async (req, res) => {
 // ============================================================================
 app.post("/api/tickets/submit", async (req, res) => {
   try {
-    const { studentId, unresolvedInquiry } = req.body;
+    const studentId = req.body.student_id || req.body.studentId; // Read the active student's session ID (supports both formats)
+    const unresolvedInquiry = req.body.unresolvedInquiry || req.body.unresolved_inquiry;
 
     if (!studentId || !unresolvedInquiry) {
       return res.status(400).json({
@@ -952,27 +953,38 @@ app.post("/api/tickets/submit", async (req, res) => {
 
     console.log(`🎫 Submission request for student: ${studentId}`);
 
-    // Step A (Check Limit)
-    const { data: existingTickets, error: countError } = await supabase
+    // A. Get the maximum allowed tickets rule set by the admin
+    const { data: config } = await supabase
+      .from('system_settings')
+      .select('max_tickets')
+      .eq('id', 1)
+      .single();
+    
+    const allowedMax = config ? parseInt(config.max_tickets) : 3;
+
+    // B. Count how many active, pending tickets this student already has in the system
+    const { count: currentActiveTickets, error: countError } = await supabase
       .from('tickets')
-      .select('id')
+      .select('*', { count: 'exact', head: true })
       .eq('student_id', studentId)
-      .eq('status', 'Pending');
+      .or('status.eq.Pending,status.eq.pending'); // Case-insensitive check to ensure correct counting
 
     if (countError) {
       console.error("❌ Error counting existing tickets:", countError.message);
       return res.status(500).json({ success: false, message: "Database query failed.", details: countError.message });
     }
 
-    // Step B (Enforce Rule)
-    if (existingTickets && existingTickets.length >= 3) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Submission Blocked: You currently have 3 pending support tickets. Please wait for the ICCT Administration to resolve your open tickets before submitting a new one." 
+    // C. The Security Interception Gate:
+    if (currentActiveTickets >= allowedMax) {
+      console.log(`⚠️ Ticket Blocked: Student ${studentId} reached their administrative limit of ${allowedMax}`);
+      return res.status(400).json({
+        success: false,
+        error: "Ticket limit reached.",
+        message: `You have reached your maximum limit of ${allowedMax} pending ticket(s). Please wait for administration to resolve your open cases.`
       });
     }
 
-    // Step C (Insert Ticket)
+    // 2. IF THE GATE PASSES, CONTINUE TO INSERT THE TICKET:
     let computedPriority = "Medium";
     const lowUrgencyWords = ["hi", "hello", "tanong", "paki-check"];
     const highUrgencyWords = ["bagsak", "mali", "error", "overdue", "scholarship", "system", "blocked", "banned"];
@@ -1001,12 +1013,8 @@ app.post("/api/tickets/submit", async (req, res) => {
     return res.json({ success: true, message: "Support ticket successfully filed with the ICCT Administration!" });
 
   } catch (err) {
-    console.error("❌ /api/tickets/submit error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-      details: err.message
-    });
+    console.error("Ticket submission validation error:", err.message);
+    return res.status(500).json({ success: false, error: "Internal service error." });
   }
 });
 

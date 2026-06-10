@@ -1138,6 +1138,80 @@
     .animate-pulse {
       animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
+    .hidden {
+      display: none !important;
+    }
+    .fixed {
+      position: fixed !important;
+    }
+    .bottom-5 {
+      bottom: 20px !important;
+    }
+    .right-5 {
+      right: 20px !important;
+    }
+    .bg-slate-900 {
+      background-color: #0f172a !important;
+    }
+    .text-white {
+      color: #ffffff !important;
+    }
+    .px-4 {
+      padding-left: 16px !important;
+      padding-right: 16px !important;
+    }
+    .py-3 {
+      padding-top: 12px !important;
+      padding-bottom: 12px !important;
+    }
+    .rounded-xl {
+      border-radius: 12px !important;
+    }
+    .shadow-xl {
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    }
+    .flex {
+      display: flex !important;
+    }
+    .items-center {
+      align-items: center !important;
+    }
+    .space-x-2 > * + * {
+      margin-left: 8px !important;
+    }
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(-25%);
+        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+      }
+      50% {
+        transform: translateY(0);
+        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+      }
+    }
+    .animate-bounce {
+      animation: bounce 1s infinite !important;
+    }
+    .border-slate-700 {
+      border-color: #334155 !important;
+    }
+    .z-50 {
+      z-index: 50 !important;
+    }
+    .w-5 {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .h-5 {
+      height: 20px !important;
+      width: 20px !important;
+    }
+    .text-emerald-400 {
+      color: #34d399 !important;
+    }
+    .text-slate-100 {
+      color: #f1f5f9 !important;
+    }
 
     /* Dual label visibility toggles for Password input */
     #signin-modal .form-group label.dark\:text-slate-200 {
@@ -2821,7 +2895,19 @@
           throw new Error(data.message || "Failed to submit ticket.");
         }
 
-        alert("Support ticket successfully filed with the ICCT Administration!");
+        const ticketStatus = document.getElementById('ticket-status-notification');
+        if (ticketStatus) {
+            ticketStatus.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 animate-bounce border border-slate-700 z-50";
+            ticketStatus.innerHTML = `
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="font-medium text-sm text-slate-100">Support ticket successfully filed with the ICCT Administration!</span>
+            `;
+            
+            // Automatically fade it away after 3 seconds
+            setTimeout(() => {
+                ticketStatus.classList.add('hidden');
+            }, 3000);
+        }
         btn.remove();
         loadStudentTickets();
 
@@ -2935,6 +3021,8 @@
 
 })();
 </script>
+  <!-- Support Ticket Toast Notification Container -->
+  <div id="ticket-status-notification" class="hidden"></div>
 
 </body>
 </html>
