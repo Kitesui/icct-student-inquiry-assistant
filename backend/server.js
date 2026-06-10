@@ -505,7 +505,8 @@ app.post("/api/chat", async (req, res) => {
     console.log(`🤖 Gemini: "${cleanAiText.substring(0, 120)}…"`);
 
     // ── Feature C (User-Confirmed Ticketing Fallback Pipeline) ────────
-    if (cleanAiText === "FALLBACK_TRIGGER") {
+    // Check if we found chunks but Gemini still tried to trigger a fallback text block
+    if (cleanAiText.includes("FALLBACK_TRIGGER") && (!dbData || dbData.length === 0)) {
       console.log("⚠️  Fallback triggered — prompting for support ticket.");
 
       const fallbackReply =
@@ -522,7 +523,9 @@ app.post("/api/chat", async (req, res) => {
 
       return res.status(200).json({ 
           reply: fallbackReply, 
+          message: fallbackReply,
           offerTicket: true,
+          triggerTicket: true,
           unresolvedInquiry: message 
       });
     }
