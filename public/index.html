@@ -2533,12 +2533,12 @@
            </span>
        </div>
 
-       <div class="w-[35%] flex items-center justify-end space-x-2 text-right flex-shrink-0">
+       <div class="w-[35%] flex items-center justify-end space-x-3 text-right flex-shrink-0">
            <span class="text-[10px] font-medium text-slate-400 whitespace-nowrap">
                ${new Date(item.created_at).toLocaleDateString()}
            </span>
            
-           <div class="relative inline-block text-left">
+           <div class="relative inline-flex items-center text-left">
                <button id="menu-dots-btn" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg text-sm transition-colors focus:outline-none menu-dots-btn" onclick="toggleHistoryMenu(event, '${item.conversation_id}')">
                    ⋮
                </button>
