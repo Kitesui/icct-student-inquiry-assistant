@@ -2512,49 +2512,49 @@
 
     filtered.forEach(item => {
       const rowDiv = document.createElement("div");
-      rowDiv.className = "flex items-center justify-between w-full bg-white border border-slate-200 rounded-xl p-4 mb-3 shadow-sm hover:border-slate-300 transition-colors history-session-item conversation-item";
-      rowDiv.style.cursor = "pointer";
+      rowDiv.className = "history-session-item conversation-item";
+      rowDiv.style.cssText = "display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,0.05); cursor:pointer; transition:border-color 0.2s;";
       rowDiv.dataset.id = item.conversation_id;
       if (item.is_pinned) {
         rowDiv.style.background = "var(--blue-50)";
       }
+      rowDiv.onmouseenter = function() { this.style.borderColor = '#cbd5e1'; };
+      rowDiv.onmouseleave = function() { this.style.borderColor = '#e2e8f0'; };
       
       const snippet = item.first_message || "Empty Conversation";
-      item.title = escapeHTML(snippet.length > 32 ? snippet.substring(0, 32) + "..." : snippet);
-      item.query_text = escapeHTML(snippet);
+      const titleText = escapeHTML(snippet.length > 32 ? snippet.substring(0, 32) + "..." : snippet);
 
-      const historyItemHTML = `
-       <div class="flex flex-col min-w-0 pr-4">
-           <span class="text-sm font-semibold text-slate-800 truncate block mb-1">
-               ${item.title || item.query_text || 'Conversation Session'}
-           </span>
-           <span class="text-xs text-slate-400 font-medium block">
-               Conversation Session
-           </span>
-       </div>
+      rowDiv.innerHTML = `
+        <div style="display:flex; flex-direction:column; min-width:0; flex:1; padding-right:16px;">
+            <span style="font-size:14px; font-weight:600; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; margin-bottom:3px;">
+                ${titleText}
+            </span>
+            <span style="font-size:11px; color:#94a3b8; font-weight:500; display:block;">
+                Conversation Session
+            </span>
+        </div>
 
-       <div class="flex items-center space-x-4 flex-shrink-0">
-           <span class="text-xs font-medium text-slate-400 whitespace-nowrap select-none">
-               ${new Date(item.created_at).toLocaleDateString()}
-           </span>
-           
-           <div class="relative inline-block text-left">
-               <button id="menu-dots-btn" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl text-sm transition-all focus:outline-none cursor-pointer relative z-20 menu-dots-btn" onclick="toggleHistoryMenu(event, '${item.conversation_id}')">
-                   ⋮
-               </button>
-               
-               <div id="dropdown-${item.conversation_id}" class="dropdown-card-element dropdown-card hidden absolute right-0 top-10 bg-white border border-slate-200 rounded-xl shadow-xl py-1 w-36 z-50">
-                   <button class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer" onclick="pinConversation(event, '${item.conversation_id}', ${item.is_pinned})">
-                       ${item.is_pinned ? "Unpin Conversation" : "Pin Conversation"}
-                   </button>
-                   <button class="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 cursor-pointer" onclick="deleteConversation(event, '${item.conversation_id}')">
-                       Delete Chat
-                   </button>
-               </div>
-           </div>
-       </div>`;
+        <div style="display:flex; align-items:center; gap:14px; flex-shrink:0;">
+            <span style="font-size:11px; font-weight:500; color:#94a3b8; white-space:nowrap; user-select:none;">
+                ${new Date(item.created_at).toLocaleDateString()}
+            </span>
+            
+            <div style="position:relative; display:inline-block;">
+                <button class="menu-dots-btn" style="padding:6px 8px; color:#94a3b8; border:1px solid #e2e8f0; border-radius:8px; background:transparent; font-size:14px; cursor:pointer; transition:all 0.15s; line-height:1; outline:none;" onclick="toggleHistoryMenu(event, '${item.conversation_id}')"
+                  onmouseenter="this.style.color='#475569'; this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1';"
+                  onmouseleave="this.style.color='#94a3b8'; this.style.background='transparent'; this.style.borderColor='#e2e8f0';">⋮</button>
+                
+                <div id="dropdown-${item.conversation_id}" class="dropdown-card-element hidden" style="position:absolute; right:0; top:36px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04); padding:4px 0; width:144px; z-index:50;">
+                    <button style="width:100%; text-align:left; padding:8px 12px; font-size:12px; font-weight:500; color:#334155; background:none; border:none; cursor:pointer;" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='none'" onclick="pinConversation(event, '${item.conversation_id}', ${item.is_pinned})">
+                        ${item.is_pinned ? "Unpin Conversation" : "Pin Conversation"}
+                    </button>
+                    <button style="width:100%; text-align:left; padding:8px 12px; font-size:12px; font-weight:500; color:#e11d48; background:none; border:none; cursor:pointer;" onmouseenter="this.style.background='#fff1f2'" onmouseleave="this.style.background='none'" onclick="deleteConversation(event, '${item.conversation_id}')">
+                        Delete Chat
+                    </button>
+                </div>
+            </div>
+        </div>`;
       
-      rowDiv.innerHTML = historyItemHTML;
       list.appendChild(rowDiv);
     });
   }
