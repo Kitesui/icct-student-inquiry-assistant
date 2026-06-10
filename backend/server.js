@@ -560,15 +560,17 @@ app.post("/api/auth/signin", async (req, res) => {
       console.log(`🔒 Admin authentication pattern detected for ID: ${studentId}`);
       
       try {
-        // Fetch the admin profile from our database
+        // Look up the ID using a clean lowercase transformation match
+        const searchId = studentId.toLowerCase().trim();
+        
         const { data: user, error: dbError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('student_id', studentId)
+          .or(`student_id.eq.${searchId},student_id.eq.${searchId.toUpperCase()}`)
           .single();
 
         if (dbError || !user) {
-          console.log(`⚠️ Admin validation failed. ID not found in database: ${studentId}`);
+          console.log(`静态 ⚠️ Admin validation failed. Profile record not found for: ${studentId}`);
           return res.status(401).json({
             success: false,
             error: "Invalid administrator credentials. Access denied."
@@ -585,7 +587,7 @@ app.post("/api/auth/signin", async (req, res) => {
           });
         }
 
-        console.log(`👑 Admin authenticated successfully via Database: ${studentId}`);
+        console.log(`👑 Admin authenticated successfully via Database lookup: ${studentId}`);
         return res.json({
           success: true,
           message: "Admin access verified!",
