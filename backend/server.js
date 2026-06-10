@@ -381,16 +381,18 @@ app.post("/api/chat", async (req, res) => {
         console.error("❌ Vector generation failed or length is not 1536!");
     }
 
-    // ── Step 2: Execute remote database semantic query ────────────────────
-    const { data: currentSettings } = await supabase
+    const { data: config, error: configError } = await supabase
       .from('system_settings')
       .select('vector_threshold')
       .eq('id', 1)
       .single();
 
-    // Fallback to -1.0 if the table read encounters any anomalies
-    const activeThreshold = currentSettings ? currentSettings.vector_threshold : -1.0;
-    console.log(`🤖 Vector database checking matching constraints using threshold: ${activeThreshold}`);
+    // If the database has a saved value, use it. Otherwise, default to -1.0
+    const activeThreshold = (config && config.vector_threshold !== undefined) 
+      ? parseFloat(config.vector_threshold) 
+      : -1.0;
+      
+    console.log(`🤖 Live Vector Processing - Active database threshold rule applied: ${activeThreshold}`);
 
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,

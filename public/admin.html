@@ -2435,8 +2435,8 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                vector_threshold: thresholdValue,
-                max_tickets: ticketsValue
+                vector_threshold: parseFloat(document.getElementById('fallback-threshold').value),
+                max_tickets: parseInt(document.getElementById('ticket-limit').value)
               })
             });
             const responseData = await res.json();
