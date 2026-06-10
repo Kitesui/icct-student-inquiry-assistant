@@ -1362,6 +1362,15 @@
     .transition-all { transition: all 500ms cubic-bezier(0, 0, 0.2, 1) !important; }
     .translate-y-0 { --tw-translate-y: 0px; }
     .opacity-100 { opacity: 1 !important; }
+
+    /* Centered cell spacing standards */
+    .px-6 { padding-left: 24px !important; padding-right: 24px !important; }
+    .py-4 { padding-top: 16px !important; padding-bottom: 16px !important; }
+    .align-middle { vertical-align: middle !important; }
+    .text-slate-700 { color: #334155 !important; }
+    .font-medium { font-weight: 500 !important; }
+    .min-h-\[44px\] { min-height: 44px !important; }
+    .w-full { width: 100% !important; }
   </style>
 </head>
 <body>
@@ -1953,12 +1962,15 @@
 
         // Student ID
         const tdStudent = document.createElement('td');
-        tdStudent.className = 'font-semibold text-slate-800';
-        tdStudent.textContent = ticket.student_id;
+        tdStudent.className = 'px-6 py-4 align-middle text-slate-700 font-medium font-semibold text-slate-800';
+        const studentWrapper = document.createElement('div');
+        studentWrapper.className = 'min-h-[44px] flex items-center w-full';
+        studentWrapper.textContent = ticket.student_id;
+        tdStudent.appendChild(studentWrapper);
         
         // Unresolved Inquiry
         const tdInquiry = document.createElement('td');
-        tdInquiry.className = 'text-slate-600 max-w-md';
+        tdInquiry.className = 'px-6 py-4 align-middle text-slate-700 font-medium text-slate-600 max-w-md';
         
         const questionDiv = document.createElement('div');
         questionDiv.className = 'text-slate-600 truncate-2-lines';
@@ -1993,21 +2005,32 @@
 
         // Priority badge
         const tdPriority = document.createElement('td');
+        tdPriority.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        const priorityWrapper = document.createElement('div');
+        priorityWrapper.className = 'min-h-[44px] flex items-center w-full';
         const pBadge = document.createElement('span');
         const pVal = ticket.priority || 'Medium';
         pBadge.className = `badge badge-${pVal.toLowerCase()}`;
         pBadge.textContent = pVal;
-        tdPriority.appendChild(pBadge);
+        priorityWrapper.appendChild(pBadge);
+        tdPriority.appendChild(priorityWrapper);
 
         // Status Badge
         const tdStatus = document.createElement('td');
+        tdStatus.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        const statusWrapper = document.createElement('div');
+        statusWrapper.className = 'min-h-[44px] flex items-center w-full';
         const sBadge = document.createElement('span');
         sBadge.className = ticket.status === 'Pending' ? 'badge badge-pending' : 'badge badge-resolved';
         sBadge.textContent = ticket.status;
-        tdStatus.appendChild(sBadge);
+        statusWrapper.appendChild(sBadge);
+        tdStatus.appendChild(statusWrapper);
 
         // Action column
         const tdAction = document.createElement('td');
+        tdAction.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        const actionWrapper = document.createElement('div');
+        actionWrapper.className = 'min-h-[44px] flex items-center w-full';
         if (ticket.status === 'Pending') {
           const btn = document.createElement('button');
           btn.className = 'btn-action btn-resolve';
@@ -2018,7 +2041,7 @@
             Mark Resolved
           `;
           btn.onclick = () => resolveTicketAction(ticket.id, btn);
-          tdAction.appendChild(btn);
+          actionWrapper.appendChild(btn);
         } else {
           const rLabel = document.createElement('span');
           rLabel.className = 'text-resolved-check';
@@ -2028,8 +2051,9 @@
             </svg>
             Resolved
           `;
-          tdAction.appendChild(rLabel);
+          actionWrapper.appendChild(rLabel);
         }
+        tdAction.appendChild(actionWrapper);
 
         tr.appendChild(tdStudent);
         tr.appendChild(tdInquiry);
