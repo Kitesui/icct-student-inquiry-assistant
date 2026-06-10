@@ -1720,12 +1720,16 @@
 
       // 2. ADD A SMOOTH TIMEOUT REMOVAL TRANSITION:
       setTimeout(() => {
-        toast.style.transform = "translateY(20px)";
+        // Start the fade out
         toast.style.opacity = "0";
+        toast.style.transform = "translateY(20px)";
+        
         setTimeout(() => {
+          // ⚡ FORCE COMPLETE DISPLAY REMOVAL AND STRIP UTILITY CLASSES
           toast.style.display = "none";
-          toast.innerHTML = "";
-        }, 500);
+          toast.className = ""; // Wipe all spacing, background, and padding layout classes
+          toast.innerHTML = ""; // Empty inner HTML tags
+        }, 500); // Wait for the 500ms CSS transition to finish
       }, 3000);
     }
 

@@ -2920,15 +2920,16 @@
             ticketStatus.style.transition = "opacity 0.5s ease, transform 0.5s ease";
             
             setTimeout(() => {
-                ticketStatus.style.transform = "translateY(20px)";
+                // Start the fade out
                 ticketStatus.style.opacity = "0";
+                ticketStatus.style.transform = "translateY(20px)";
                 
                 setTimeout(() => {
-                    // Explicitly set display none to completely clear the screen space
-                    ticketStatus.style.display = "none"; 
-                    // Clear the inner text content out entirely
-                    ticketStatus.innerHTML = ""; 
-                }, 500); // Wait for the 0.5s fade out transition animation to finish
+                    // ⚡ FORCE COMPLETE DISPLAY REMOVAL AND STRIP UTILITY CLASSES
+                    ticketStatus.style.display = "none";
+                    ticketStatus.className = ""; // Wipe all spacing, background, and padding layout classes
+                    ticketStatus.innerHTML = ""; // Empty inner HTML tags
+                }, 500); // Wait for the 500ms CSS transition to finish
             }, 3000); // Display the success banner for exactly 3 seconds before starting fade
         }
         btn.remove();
