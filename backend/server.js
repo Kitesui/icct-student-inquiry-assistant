@@ -366,24 +366,24 @@ app.post("/api/chat", async (req, res) => {
     }]);
 
     // ── Step 1: Compute the incoming message vector ─────────────────────
-    const userMessageVector = await embedWithRetry(message);
+    const queryEmbedding = await embedWithRetry(message);
 
     // ── Step 2: Execute remote database semantic query ────────────────────
-    const { data: matchedRecords, error: matchError } = await supabase.rpc('match_knowledge', {
-      query_embedding: userMessageVector,
-      match_threshold: 0.1,
-      match_count: 5,
+    const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.1, // Loosened threshold for cloud precision
+      match_count: 5
     });
 
-    if (matchError) {
-      console.error("❌ Supabase RPC error:", matchError.message);
+    if (dbError) {
+      console.error("❌ Supabase RPC error:", dbError.message);
     }
 
     console.log(`\n💬 User: "${message}"`);
-    console.log(`🔍 Vector search returned ${matchedRecords?.length ?? 0} match(es).`);
+    console.log(`🔍 Vector search returned ${dbData?.length ?? 0} match(es).`);
 
     // ── Step 3: Feed context to Gemini or activate fallback ──────────────
-    if (!matchedRecords || matchedRecords.length === 0) {
+    if (!dbData || dbData.length === 0) {
       console.log("⚠️  No vector match — triggering fallback.");
 
       const fallbackReply =
@@ -404,10 +404,12 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const contextText = matchedRecords.map(chunk => chunk.content).join('\n\n');
+    const contextText = dbData && dbData.length > 0 
+        ? dbData.map(row => row.content).join('\n\n') 
+        : "";
     
     // References using category and title
-    const references = matchedRecords.map(chunk => `[Category: ${chunk.category} | Title: ${chunk.title}]`).join(', ');
+    const references = dbData.map(chunk => `[Category: ${chunk.category} | Title: ${chunk.title}]`).join(', ');
     console.log(`Matched references: ${references}`);
 
     const formattedHistory = (history || []).map((entry) => ({
