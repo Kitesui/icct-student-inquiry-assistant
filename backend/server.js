@@ -371,7 +371,7 @@ app.post("/api/chat", async (req, res) => {
     // ── Step 2: Execute remote database semantic query ────────────────────
     const { data: matchedRecords, error: matchError } = await supabase.rpc('match_knowledge', {
       query_embedding: userMessageVector,
-      match_threshold: 0.23,
+      match_threshold: 0.2,
       match_count: 4,
     });
 
