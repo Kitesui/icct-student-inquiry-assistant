@@ -372,56 +372,30 @@ app.post("/api/chat", async (req, res) => {
         contents: query,
         config: { outputDimensionality: 1536 }
     });
+    
+    // Safely isolate the nested array values array
     const queryEmbedding = embeddingResponse.embeddings[0].values;
+    
+    if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1536) {
+        console.error("❌ Vector generation failed or length is not 1536!");
+    }
 
     // ── Step 2: Execute remote database semantic query ────────────────────
-    console.log("--- CHAT DEBUG METRICS ---");
-    console.log("Query Vector Size:", queryEmbedding ? queryEmbedding.length : "NULL");
-   
-    let { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
+    const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
-        match_threshold: 0.1,
-        match_count: 5
+        match_threshold: 0.1, // Relaxed threshold for testing
+        match_count: 4
     });
 
     if (dbError) {
-        console.error("Supabase Error Code:", dbError.code, "-", dbError.message);
+        console.error("❌ Supabase RPC Execution Error:", dbError.message);
     } else {
-        console.log("Database Chunks Found:", dbData ? dbData.length : 0);
+        console.log(`📊 SUCCESS: Vector search returned ${dbData ? dbData.length : 0} row matches from the cloud database!`);
     }
 
-    if (!dbData || dbData.length === 0) {
-        console.log("🔄 RPC returned 0. Accessing pre-loaded server memory array datasets...");
-        const cleanQuery = query.toLowerCase();
-        
-        if (typeof globalKnowledgeBase !== 'undefined' && globalKnowledgeBase.length > 0) {
-            const filteredRows = globalKnowledgeBase.filter(row => {
-                const contentVal = row.content || row.context || "";
-                const titleVal = row.title || row.topic || "";
-                const categoryVal = row.category || row.keywords || "";
-                return contentVal.toLowerCase().includes(cleanQuery) ||
-                       titleVal.toLowerCase().includes(cleanQuery) ||
-                       categoryVal.toLowerCase().includes(cleanQuery);
-            }).slice(0, 4).map(row => ({
-                category: row.category || row.keywords || "",
-                title: row.title || row.topic || "",
-                content: row.content || row.context || ""
-            }));
-            
-            if (filteredRows.length > 0) {
-                console.log(`🎯 Memory engine successfully matched ${filteredRows.length} chunks from local CSV cache!`);
-                dbData = filteredRows;
-            }
-        } else {
-            console.log("❌ Warning: Global memory array variable name mismatch or empty.");
-        }
-    }
-   
     const contextText = dbData && dbData.length > 0 
         ? dbData.map(row => row.content).join('\n\n') 
         : "";
-       
-    console.log("--------------------------");
 
     // ── Step 3: Feed context to Gemini or activate fallback ──────────────
     if (!dbData || dbData.length === 0) {
@@ -505,8 +479,7 @@ app.post("/api/chat", async (req, res) => {
     console.log(`🤖 Gemini: "${cleanAiText.substring(0, 120)}…"`);
 
     // ── Feature C (User-Confirmed Ticketing Fallback Pipeline) ────────
-    // Check if we found chunks but Gemini still tried to trigger a fallback text block
-    if (cleanAiText.includes("FALLBACK_TRIGGER") && (!dbData || dbData.length === 0)) {
+    if (cleanAiText.includes("FALLBACK_TRIGGER")) {
       console.log("⚠️  Fallback triggered — prompting for support ticket.");
 
       const fallbackReply =
@@ -523,9 +496,7 @@ app.post("/api/chat", async (req, res) => {
 
       return res.status(200).json({ 
           reply: fallbackReply, 
-          message: fallbackReply,
           offerTicket: true,
-          triggerTicket: true,
           unresolvedInquiry: message 
       });
     }
