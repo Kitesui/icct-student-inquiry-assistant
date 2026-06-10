@@ -1371,6 +1371,20 @@
     .font-medium { font-weight: 500 !important; }
     .min-h-\[44px\] { min-height: 44px !important; }
     .w-full { width: 100% !important; }
+
+    /* Fixed table layouts and column width constraints */
+    .table-fixed { table-layout: fixed !important; }
+    .min-w-\[1000px\] { min-width: 1000px !important; }
+    .w-\[15\%\] { width: 15% !important; }
+    .w-\[45\%\] { width: 45% !important; }
+    .w-\[10\%\] { width: 10% !important; }
+    .px-4 { padding-left: 16px !important; padding-right: 16px !important; }
+    .py-3 { padding-top: 12px !important; padding-bottom: 12px !important; }
+    .text-center { text-align: center !important; }
+    .max-w-full { max-width: 100% !important; }
+    .p-2 { padding: 8px !important; }
+    .rounded-lg { border-radius: 8px !important; }
+    .text-sm { font-size: 14px !important; }
   </style>
 </head>
 <body>
@@ -1539,14 +1553,14 @@
               </div>
             </div>
             <div class="table-container">
-              <table>
+              <table class="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr>
-                    <th>Student ID</th>
-                    <th>Unresolved Inquiry</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Action</th>
+                    <th class="w-[15%] px-4 py-3 align-middle">Student ID</th>
+                    <th class="w-[45%] px-4 py-3 align-middle">Unresolved Inquiry</th>
+                    <th class="w-[10%] px-4 py-3 align-middle text-center">Priority</th>
+                    <th class="w-[15%] px-4 py-3 align-middle text-center">Status</th>
+                    <th class="w-[15%] px-4 py-3 align-middle text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody id="tickets-tbody">
@@ -1962,7 +1976,7 @@
 
         // Student ID
         const tdStudent = document.createElement('td');
-        tdStudent.className = 'px-6 py-4 align-middle text-slate-700 font-medium font-semibold text-slate-800';
+        tdStudent.className = 'w-[15%] px-4 py-3 align-middle text-slate-700 font-medium font-semibold text-slate-800';
         const studentWrapper = document.createElement('div');
         studentWrapper.className = 'min-h-[44px] flex items-center w-full';
         studentWrapper.textContent = ticket.student_id;
@@ -1970,7 +1984,7 @@
         
         // Unresolved Inquiry
         const tdInquiry = document.createElement('td');
-        tdInquiry.className = 'px-6 py-4 align-middle text-slate-700 font-medium text-slate-600 max-w-md';
+        tdInquiry.className = 'w-[45%] px-4 py-3 align-middle text-slate-700 font-medium text-slate-600 max-w-md';
         
         const questionDiv = document.createElement('div');
         questionDiv.className = 'text-slate-600 truncate-2-lines';
@@ -1981,15 +1995,10 @@
         if (ticket.status === 'Pending') {
           const replyBox = document.createElement('textarea');
           replyBox.id = `reply-box-${ticket.id}`;
-          replyBox.className = 'admin-reply-box';
+          replyBox.className = 'w-full max-w-full min-h-[44px] p-2 border rounded-lg text-sm admin-reply-box';
           replyBox.placeholder = 'Type Admin Reply...';
-          replyBox.style.width = '100%';
           replyBox.style.marginTop = '8px';
-          replyBox.style.padding = '8px';
-          replyBox.style.border = '1px solid var(--border)';
-          replyBox.style.borderRadius = 'var(--radius-sm)';
           replyBox.style.fontFamily = 'inherit';
-          replyBox.style.fontSize = '13px';
           replyBox.style.resize = 'vertical';
           replyBox.style.outline = 'none';
           tdInquiry.appendChild(replyBox);
@@ -2005,7 +2014,7 @@
 
         // Priority badge
         const tdPriority = document.createElement('td');
-        tdPriority.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        tdPriority.className = 'w-[10%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
         const priorityWrapper = document.createElement('div');
         priorityWrapper.className = 'min-h-[44px] flex items-center w-full';
         const pBadge = document.createElement('span');
@@ -2017,7 +2026,7 @@
 
         // Status Badge
         const tdStatus = document.createElement('td');
-        tdStatus.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        tdStatus.className = 'w-[15%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
         const statusWrapper = document.createElement('div');
         statusWrapper.className = 'min-h-[44px] flex items-center w-full';
         const sBadge = document.createElement('span');
@@ -2028,7 +2037,7 @@
 
         // Action column
         const tdAction = document.createElement('td');
-        tdAction.className = 'px-6 py-4 align-middle text-slate-700 font-medium';
+        tdAction.className = 'w-[15%] px-4 py-3 align-middle text-center text-slate-700 font-medium';
         const actionWrapper = document.createElement('div');
         actionWrapper.className = 'min-h-[44px] flex items-center w-full';
         if (ticket.status === 'Pending') {
