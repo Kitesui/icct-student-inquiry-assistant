@@ -2512,7 +2512,7 @@
 
     filtered.forEach(c => {
       const item = document.createElement("div");
-      item.className = "card-item history-session-item conversation-item";
+      item.className = "flex items-center justify-between p-4 border-b border-slate-100 hover:bg-slate-50 w-full transition-colors history-session-item conversation-item";
       item.style.cursor = "pointer";
       item.dataset.id = c.conversation_id;
       if (c.is_pinned) {
@@ -2521,28 +2521,33 @@
       
       const snippet = c.first_message || "Empty Conversation";
       const title = snippet.length > 32 ? snippet.substring(0, 32) + "..." : snippet;
-      const pinOpacity = c.is_pinned ? "1" : "0.3";
 
       item.innerHTML = `
-        <div class="card-info">
-          <h3>💬 ${escapeHTML(title)}</h3>
-          <div class="card-meta"><span>Conversation Session</span></div>
+        <div class="flex items-start space-x-3 max-w-[70%]">
+            <div class="mt-1 flex-shrink-0 text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+            </div>
+            <div class="flex flex-col min-w-0">
+                <h4 class="text-sm font-semibold text-slate-800 break-words leading-tight pr-1 mb-0.5">${escapeHTML(title)}</h4>
+                <p class="text-xs text-slate-400 font-medium m-0">Conversation Session</p>
+            </div>
         </div>
-        <div class="card-right" style="display: flex; align-items: center; gap: 14px; position: relative;">
-          <span class="card-date">${new Date(c.created_at).toLocaleDateString()}</span>
-          
-          <div class="relative flex items-center justify-end">
-              <button id="menu-dots-btn" class="p-1.5 hover:bg-slate-100 rounded-lg menu-dots-btn" onclick="toggleHistoryMenu(event, '${c.conversation_id}')">⋮</button>
-              
-              <div id="dropdown-${c.conversation_id}" class="dropdown-card-element dropdown-card hidden absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-xl py-1 w-36 z-50">
-                  <button class="w-full text-left px-3 py-2 text-xs font-medium text-slate-705 hover:bg-slate-50" onclick="pinConversation(event, '${c.conversation_id}', ${c.is_pinned})">
-                      ${c.is_pinned ? "Unpin Conversation" : "Pin Conversation"}
-                  </button>
-                  <button class="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50" onclick="deleteConversation(event, '${c.conversation_id}')">
-                      Delete Chat
-                  </button>
-              </div>
-          </div>
+
+        <div class="flex flex-col items-end justify-between flex-shrink-0 text-right min-w-[85px] h-full space-y-2">
+            <span class="text-[11px] font-medium text-slate-400/80 tracking-wide select-none">${new Date(c.created_at).toLocaleDateString()}</span>
+            
+            <div class="relative inline-block text-left leading-none">
+                <button id="menu-dots-btn" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-base select-none focus:outline-none menu-dots-btn" onclick="toggleHistoryMenu(event, '${c.conversation_id}')">⋮</button>
+                
+                <div id="dropdown-${c.conversation_id}" class="dropdown-card-element dropdown-card hidden absolute right-0 top-6 bg-white border border-slate-200 rounded-xl shadow-xl py-1 w-36 z-50">
+                    <button class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onclick="pinConversation(event, '${c.conversation_id}', ${c.is_pinned})">
+                        ${c.is_pinned ? "Unpin Conversation" : "Pin Conversation"}
+                    </button>
+                    <button class="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50" onclick="deleteConversation(event, '${c.conversation_id}')">
+                        Delete Chat
+                    </button>
+                </div>
+            </div>
         </div>`;
       list.appendChild(item);
     });
