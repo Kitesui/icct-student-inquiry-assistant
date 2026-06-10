@@ -382,9 +382,19 @@ app.post("/api/chat", async (req, res) => {
     }
 
     // ── Step 2: Execute remote database semantic query ────────────────────
+    const { data: currentSettings } = await supabase
+      .from('system_settings')
+      .select('vector_threshold')
+      .eq('id', 1)
+      .single();
+
+    // Fallback to -1.0 if the table read encounters any anomalies
+    const activeThreshold = currentSettings ? currentSettings.vector_threshold : -1.0;
+    console.log(`🤖 Vector database checking matching constraints using threshold: ${activeThreshold}`);
+
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
-        match_threshold: -1.0, // Bypass positive boundary filter for testing
+        match_threshold: activeThreshold,
         match_count: 4
     });
 
@@ -995,6 +1005,50 @@ app.post("/api/tickets/submit", async (req, res) => {
       message: "Internal server error.",
       details: err.message
     });
+  }
+});
+
+
+// ============================================================================
+//  GET /api/admin/settings — Retrieve Admin configurations from Supabase
+// ============================================================================
+app.get('/api/admin/settings', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+      
+    if (error) throw error;
+    return res.json({ success: true, settings: data });
+  } catch (err) {
+    console.error("Error fetching settings:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+//  POST /api/admin/settings — Save Admin configurations to Supabase
+// ============================================================================
+app.post('/api/admin/settings', async (req, res) => {
+  const { vector_threshold, max_tickets } = req.body;
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .upsert({ 
+        id: 1, 
+        vector_threshold: parseFloat(vector_threshold), 
+        max_tickets: parseInt(max_tickets),
+        updated_at: new Date()
+      });
+      
+    if (error) throw error;
+    console.log(`⚙️ System configs updated in database. New Threshold: ${vector_threshold}`);
+    return res.json({ success: true, message: "Settings saved to database successfully!" });
+  } catch (err) {
+    console.error("Error saving settings:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

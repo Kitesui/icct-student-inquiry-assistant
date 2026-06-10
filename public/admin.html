@@ -1624,7 +1624,7 @@
               <p class="table-subtitle">Customize operational limits, threshold sensitivity, and active AI model settings.</p>
             </div>
             
-            <form id="settings-form" onsubmit="event.preventDefault(); showToast('Settings saved successfully!');" style="display: flex; flex-direction: column; gap: 20px; max-width: 600px;">
+            <form id="settings-form" style="display: flex; flex-direction: column; gap: 20px; max-width: 600px;">
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <label for="ai-model" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Active Generative AI Model</label>
                 <select id="ai-model" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); outline: none;">
@@ -2385,6 +2385,73 @@
 
     // Initialize Dashboard
     document.addEventListener('DOMContentLoaded', () => {
+      // Load configurations from backend database API
+      fetch(`${API_BASE_URL}/api/admin/settings`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.settings) {
+            const settings = data.settings;
+            const thresholdEl = document.getElementById('fallback-threshold');
+            const thresholdValEl = document.getElementById('threshold-val');
+            const ticketsEl = document.getElementById('ticket-limit');
+            
+            if (thresholdEl) thresholdEl.value = settings.vector_threshold;
+            if (thresholdValEl) thresholdValEl.innerText = settings.vector_threshold;
+            if (ticketsEl) ticketsEl.value = settings.max_tickets;
+          }
+        })
+        .catch(err => console.error('Failed to load system settings from database:', err));
+
+      // Load other configs from localStorage
+      const savedModel = localStorage.getItem('admin_model');
+      const savedInstruction = localStorage.getItem('admin_instruction');
+
+      if (savedModel) {
+        const modelEl = document.getElementById('ai-model');
+        if (modelEl) modelEl.value = savedModel;
+      }
+      if (savedInstruction) {
+        const instructionEl = document.getElementById('system-instructions');
+        if (instructionEl) instructionEl.value = savedInstruction;
+      }
+
+      // Wire up save configuration form to backend database API
+      const settingsForm = document.getElementById('settings-form');
+      if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const selectedModel = document.getElementById('ai-model').value;
+          const thresholdValue = document.getElementById('fallback-threshold').value;
+          const ticketsValue = document.getElementById('ticket-limit').value;
+          const instructionValue = document.getElementById('system-instructions').value;
+          
+          // Save model and instructions locally
+          localStorage.setItem('admin_model', selectedModel);
+          localStorage.setItem('admin_instruction', instructionValue);
+          
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                vector_threshold: thresholdValue,
+                max_tickets: ticketsValue
+              })
+            });
+            const responseData = await res.json();
+            if (res.status === 200 && responseData.success) {
+              showToast('Settings saved successfully!');
+            } else {
+              showToast('Failed to save settings to database.');
+            }
+          } catch (err) {
+            console.error('Failed to save configuration settings:', err);
+            showToast('Network error saving settings.');
+          }
+        });
+      }
+
       // Wire Cancel button
       document.getElementById('btn-delete-cancel').addEventListener('click', closeDeleteModal);
 
