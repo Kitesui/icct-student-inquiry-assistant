@@ -366,6 +366,19 @@ app.post("/api/chat", async (req, res) => {
       conversation_id: conversationId
     }]);
 
+    // ── Fetch student's preferred system language ────────────────────────
+    const { data: langProfile } = await supabase
+      .from('profiles')
+      .select('system_language')
+      .eq('student_id', studentId)
+      .single();
+
+    const targetLanguage = (langProfile && langProfile.system_language)
+      ? langProfile.system_language
+      : 'English';
+
+    console.log(`🌐 Student language preference resolved: ${targetLanguage}`);
+
     // ── Step 1: Compute the incoming message vector ─────────────────────
     const query = message;
     const embeddingResponse = await ai.models.embedContent({
@@ -476,10 +489,15 @@ app.post("/api/chat", async (req, res) => {
 
     const contents = [contextTurn, contextAck, ...formattedHistory, userTurn];
 
-    // ── Step 4: Call Gemini via the @google/genai SDK ────────────────────
+    // ── Step 4: Build dynamic system instruction with language rule ─────
+    const finalSystemInstruction = `${SYSTEM_INSTRUCTION}
+
+CRITICAL SYSTEM CONSTRAINT: You must generate your final output response strictly using the ${targetLanguage} language template rules. If the user context is in a different language, translate the meaning accurately to match the requested system language parameter: ${targetLanguage}.`;
+
+    // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
     const response = await generateContentWithRetry(
       MODEL_NAME,
-      { systemInstruction: SYSTEM_INSTRUCTION },
+      { systemInstruction: finalSystemInstruction },
       contents
     );
 
