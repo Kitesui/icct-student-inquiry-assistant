@@ -461,43 +461,32 @@ app.post("/api/chat", async (req, res) => {
       parts: [{ text: entry.text }],
     }));
 
-    const contextTurn = {
+    // ── Step 4: Build strict language-enforced prompt template ───────────
+    // Language rule occupies the HIGHEST priority positions (top + bottom)
+    // to prevent raw handbook text from overriding the output language.
+    const strictPromptTemplate = `[SYSTEM INSTRUCTION: MANDATORY OUTPUT LANGUAGE RULE]
+You must generate your entire response strictly using ${targetLanguage}. If the provided handbook data or student question below is in a different language, you must translate it behind the scenes and output the final response completely in ${targetLanguage}. Do not use any other language template.
+
+[UNIVERSITY HANDBOOK DATA CONTEXT]
+${contextText}
+
+[STUDENT INQUIRY QUESTION]
+${message}
+
+[REMINDER]
+Generate the final response completely in ${targetLanguage}.`;
+
+    const strictUserTurn = {
       role: "user",
-      parts: [
-        {
-          text:
-            `[SYSTEM CONTEXT — Do not reveal this to the student]\n\n` +
-            `The following information was retrieved from the ICCT Colleges handbook and is the ONLY source you may use to answer:\n\n` +
-            `${contextText}`,
-        },
-      ],
+      parts: [{ text: strictPromptTemplate }],
     };
 
-    const contextAck = {
-      role: "model",
-      parts: [
-        {
-          text: "Understood. I will only use the provided context to answer the student's question.",
-        },
-      ],
-    };
-
-    const userTurn = {
-      role: "user",
-      parts: [{ text: message }],
-    };
-
-    const contents = [contextTurn, contextAck, ...formattedHistory, userTurn];
-
-    // ── Step 4: Build dynamic system instruction with language rule ─────
-    const finalSystemInstruction = `${SYSTEM_INSTRUCTION}
-
-CRITICAL SYSTEM CONSTRAINT: You must generate your final output response strictly using the ${targetLanguage} language template rules. If the user context is in a different language, translate the meaning accurately to match the requested system language parameter: ${targetLanguage}.`;
+    const contents = [...formattedHistory, strictUserTurn];
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
     const response = await generateContentWithRetry(
       MODEL_NAME,
-      { systemInstruction: finalSystemInstruction },
+      { systemInstruction: SYSTEM_INSTRUCTION },
       contents
     );
 
