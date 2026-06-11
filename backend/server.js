@@ -358,6 +358,22 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
+    // ── MANDATORY: Fresh-fetch student language setting per request ──────
+    // This MUST execute before any AI context is built to guarantee the
+    // latest database value is used — never a cached/stale preference.
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('system_language')
+      .eq('student_id', studentId)
+      .single();
+
+    if (profileError) {
+      console.warn(`⚠️ Language profile fetch warning for ${studentId}: ${profileError.message}`);
+    }
+
+    const activeLanguage = userProfile?.system_language || 'English';
+    console.log(`🌐 [FRESH FETCH] Active language for this request: ${activeLanguage}`);
+
     // ── Feature A (Persistent User Logs) ───────────────────────────────
     await supabase.from('chat_logs').insert([{
       student_id: studentId,
@@ -365,19 +381,6 @@ app.post("/api/chat", async (req, res) => {
       message_text: message,
       conversation_id: conversationId
     }]);
-
-    // ── Fetch student's preferred system language ────────────────────────
-    const { data: langProfile } = await supabase
-      .from('profiles')
-      .select('system_language')
-      .eq('student_id', studentId)
-      .single();
-
-    const targetLanguage = (langProfile && langProfile.system_language)
-      ? langProfile.system_language
-      : 'English';
-
-    console.log(`🌐 Student language preference resolved: ${targetLanguage}`);
 
     // ── Step 1: Compute the incoming message vector ─────────────────────
     const query = message;
@@ -464,17 +467,16 @@ app.post("/api/chat", async (req, res) => {
     // ── Step 4: Build strict language-enforced prompt template ───────────
     // Language rule occupies the HIGHEST priority positions (top + bottom)
     // to prevent raw handbook text from overriding the output language.
-    const strictPromptTemplate = `[SYSTEM INSTRUCTION: MANDATORY OUTPUT LANGUAGE RULE]
-You must generate your entire response strictly using ${targetLanguage}. If the provided handbook data or student question below is in a different language, you must translate it behind the scenes and output the final response completely in ${targetLanguage}. Do not use any other language template.
+    const strictPromptTemplate = `SYSTEM: Respond strictly in ${activeLanguage}.
+If the student asks a question, translate it to ${activeLanguage} internally and output the answer in ${activeLanguage}.
 
-[UNIVERSITY HANDBOOK DATA CONTEXT]
+CONTEXT:
 ${contextText}
 
-[STUDENT INQUIRY QUESTION]
+QUESTION:
 ${message}
 
-[REMINDER]
-Generate the final response completely in ${targetLanguage}.`;
+REMINDER: Generate the final response completely in ${activeLanguage}.`;
 
     const strictUserTurn = {
       role: "user",
