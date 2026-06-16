@@ -1188,25 +1188,26 @@ app.get("/api/admin/stats", async (req, res) => {
       });
     }
 
-    // 2. FETCH DISTINCT CATEGORIES LIVE FROM school_knowledge
-    //    Any new category added to the KB instantly appears in the chart — no code change needed.
+    // 2. FETCH CATEGORIES + TITLES LIVE FROM school_knowledge
+    //    We pull titles too so keyword matching covers what students actually ask about,
+    //    not just the bare category name.
     const { data: knowledgeRows, error: knowledgeError } = await supabase
       .from("school_knowledge")
-      .select("category");
+      .select("category, title");
 
     if (knowledgeError) {
       console.error("❌ Stats error fetching knowledge categories:", knowledgeError.message);
       return res.status(500).json({ error: knowledgeError.message });
     }
 
-    // Deduplicate and normalise category names (trim + title-case)
-    const distinctCategories = [
-      ...new Set(
-        (knowledgeRows || [])
-          .map(r => (r.category || "Unassigned").trim())
-          .filter(Boolean)
-      )
-    ];
+    // Group titles under each unique category  { "Admission": ["SHS Pre Reg...", ...], ... }
+    const categoryTitleMap = {};
+    for (const row of (knowledgeRows || [])) {
+      const cat = (row.category || "Unassigned").trim();
+      if (!categoryTitleMap[cat]) categoryTitleMap[cat] = [];
+      if (row.title) categoryTitleMap[cat].push(row.title);
+    }
+    const distinctCategories = Object.keys(categoryTitleMap);
 
     // 3. FETCH CHAT LOGS FOR KEYWORD COUNTING
     const { data: chatLogs, error: logsError } = await supabase
@@ -1220,25 +1221,34 @@ app.get("/api/admin/stats", async (req, res) => {
     }
 
     // 4. COUNT MATCHES PER CATEGORY
-    //    For each live category, count how many user messages contain a meaningful keyword
-    //    derived from the category name (e.g. "Document Requests" → ["document", "request"]).
-    //    Falls back to 0 for categories with no keyword hits.
+    //    Keywords come from the category name + every article title under it.
+    //    Each keyword is stemmed to its first 6 chars for fuzzy prefix matching.
+    //    Example — "Admission" + titles like "SHS Pre Registration", "Requirements"
+    //    → keywords: "admiss", "shs", "pre", "regist", "requir", "applic", ...
+    //    A student typing "how to apply for SHS" now correctly matches "Admission".
     const logTexts = (chatLogs || []).map(l => (l.message_text || "").toLowerCase());
+    const stopWords = new Set([
+      "and", "or", "the", "for", "of", "a", "an", "in", "on", "to",
+      "with", "are", "is", "its", "at", "by", "be", "as", "from", "about"
+    ]);
+
+    function extractStems(text) {
+      return text
+        .toLowerCase()
+        .split(/[\s/,&\-:()]+/)
+        .map(w => w.replace(/[^a-z0-9]/g, ""))
+        .filter(w => w.length > 2 && !stopWords.has(w))
+        .map(w => w.slice(0, Math.min(6, w.length)));
+    }
 
     const categoryCountMap = {};
     for (const cat of distinctCategories) {
-      // Split the category name into individual keywords, filter out short stop-words,
-      // then STEM each word to its first 6 characters for fuzzy prefix matching.
-      // This ensures "enrollment" matches "enroll", "scheduling" matches "sched", etc.
-      const stopWords = new Set(["and", "or", "the", "for", "of", "a", "an", "in", "on", "to"]);
-      const keywords = cat
-        .toLowerCase()
-        .split(/[\s/,&-]+/)
-        .map(w => w.replace(/[^a-z0-9]/g, ""))
-        .filter(w => w.length > 2 && !stopWords.has(w))
-        .map(w => w.slice(0, Math.min(6, w.length))); // ← stem to first 6 chars
+      const titles = categoryTitleMap[cat] || [];
+      // Merge keywords from the category name itself + all its article titles
+      const allSourceText = [cat, ...titles].join(" ");
+      const keywords = [...new Set(extractStems(allSourceText))];
 
-      // A message matches if its text contains ANY stemmed keyword from this category
+      // A message matches if it contains ANY keyword derived from this category's content
       const count = keywords.length > 0
         ? logTexts.filter(text => keywords.some(kw => text.includes(kw))).length
         : 0;
