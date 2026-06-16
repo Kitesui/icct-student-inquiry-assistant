@@ -1227,21 +1227,25 @@ app.get("/api/admin/stats", async (req, res) => {
 
     const categoryCountMap = {};
     for (const cat of distinctCategories) {
-      // Split the category name into individual keywords, filter out short stop-words
+      // Split the category name into individual keywords, filter out short stop-words,
+      // then STEM each word to its first 6 characters for fuzzy prefix matching.
+      // This ensures "enrollment" matches "enroll", "scheduling" matches "sched", etc.
       const stopWords = new Set(["and", "or", "the", "for", "of", "a", "an", "in", "on", "to"]);
       const keywords = cat
         .toLowerCase()
         .split(/[\s/,&-]+/)
         .map(w => w.replace(/[^a-z0-9]/g, ""))
-        .filter(w => w.length > 2 && !stopWords.has(w));
+        .filter(w => w.length > 2 && !stopWords.has(w))
+        .map(w => w.slice(0, Math.min(6, w.length))); // ← stem to first 6 chars
 
-      // A message matches if it contains ANY keyword from this category
+      // A message matches if its text contains ANY stemmed keyword from this category
       const count = keywords.length > 0
         ? logTexts.filter(text => keywords.some(kw => text.includes(kw))).length
         : 0;
 
       categoryCountMap[cat] = count;
     }
+
 
     // 5. AI RESOLUTION MATH
     const totalInquiries = chatLogs?.length ?? 0;
