@@ -1776,10 +1776,12 @@
         document.getElementById('pending-tickets').innerText = (data.pendingTickets || 0).toLocaleString();
         document.getElementById('resolution-rate').innerText = data.resolutionRate || '0.0%';
 
-        // Dynamically map categories from the API response
+        // Dynamically map categories from the live API response
+        // The array shape is: [{ category: string, count: number }, ...]
+        // Any new category added to school_knowledge will auto-appear here.
         const categoriesArray = data.categoriesArray || [];
-        const categoryLabels = categoriesArray.map(item => item.category_name);
-        const categoryCounts = categoriesArray.map(item => item.ticket_count);
+        const categoryLabels = categoriesArray.map(item => item.category || 'Unassigned');
+        const categoryCounts = categoriesArray.map(item => item.count);
 
         // Color palette — cycles automatically when new categories are added
         const categoryColors = [

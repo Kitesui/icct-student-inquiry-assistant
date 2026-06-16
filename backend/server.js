@@ -1188,7 +1188,27 @@ app.get("/api/admin/stats", async (req, res) => {
       });
     }
 
-    // 2. AGGREGATE CATEGORY DISTRIBUTION
+    // 2. FETCH DISTINCT CATEGORIES LIVE FROM school_knowledge
+    //    Any new category added to the KB instantly appears in the chart — no code change needed.
+    const { data: knowledgeRows, error: knowledgeError } = await supabase
+      .from("school_knowledge")
+      .select("category");
+
+    if (knowledgeError) {
+      console.error("❌ Stats error fetching knowledge categories:", knowledgeError.message);
+      return res.status(500).json({ error: knowledgeError.message });
+    }
+
+    // Deduplicate and normalise category names (trim + title-case)
+    const distinctCategories = [
+      ...new Set(
+        (knowledgeRows || [])
+          .map(r => (r.category || "Unassigned").trim())
+          .filter(Boolean)
+      )
+    ];
+
+    // 3. FETCH CHAT LOGS FOR KEYWORD COUNTING
     const { data: chatLogs, error: logsError } = await supabase
       .from("chat_logs")
       .select("message_text")
@@ -1199,51 +1219,53 @@ app.get("/api/admin/stats", async (req, res) => {
       return res.status(500).json({ error: logsError.message });
     }
 
-    const categories = {
-      Enrollment: 0,
-      Tuition: 0,
-      "Document Requests": 0,
-      Scheduling: 0
-    };
+    // 4. COUNT MATCHES PER CATEGORY
+    //    For each live category, count how many user messages contain a meaningful keyword
+    //    derived from the category name (e.g. "Document Requests" → ["document", "request"]).
+    //    Falls back to 0 for categories with no keyword hits.
+    const logTexts = (chatLogs || []).map(l => (l.message_text || "").toLowerCase());
 
-    if (chatLogs) {
-      chatLogs.forEach(log => {
-        const text = (log.message_text || "").toLowerCase();
-        if (text.includes("enroll") || text.includes("admission") || text.includes("apply") || text.includes("requirements")) {
-          categories.Enrollment++;
-        } else if (text.includes("tuition") || text.includes("payment") || text.includes("fee") || text.includes("fees") || text.includes("bayad") || text.includes("scholarship") || text.includes("discount")) {
-          categories.Tuition++;
-        } else if (text.includes("document") || text.includes("documents") || text.includes("sog") || text.includes("transcript") || text.includes("tor") || text.includes("diploma") || text.includes("certificate")) {
-          categories["Document Requests"]++;
-        } else if (text.includes("schedule") || text.includes("scheduling") || text.includes("sched") || text.includes("calendar") || text.includes("class") || text.includes("classes") || text.includes("subject") || text.includes("semester")) {
-          categories.Scheduling++;
-        }
-      });
+    const categoryCountMap = {};
+    for (const cat of distinctCategories) {
+      // Split the category name into individual keywords, filter out short stop-words
+      const stopWords = new Set(["and", "or", "the", "for", "of", "a", "an", "in", "on", "to"]);
+      const keywords = cat
+        .toLowerCase()
+        .split(/[\s/,&-]+/)
+        .map(w => w.replace(/[^a-z0-9]/g, ""))
+        .filter(w => w.length > 2 && !stopWords.has(w));
+
+      // A message matches if it contains ANY keyword from this category
+      const count = keywords.length > 0
+        ? logTexts.filter(text => keywords.some(kw => text.includes(kw))).length
+        : 0;
+
+      categoryCountMap[cat] = count;
     }
 
-    // 3. AI RESOLUTION MATH
+    // 5. AI RESOLUTION MATH
     const totalInquiries = chatLogs?.length ?? 0;
     const selfServed = Math.max(0, totalInquiries - totalTickets);
     const resolutionRateVal = totalInquiries > 0 ? (selfServed / totalInquiries) * 100 : 100.0;
     const resolutionRate = `${resolutionRateVal.toFixed(1)}%`;
 
-    // Build a dynamic array so the frontend can bind chart labels + counts without hardcoding
-    const categoriesArray = Object.entries(categories)
-      .map(([category_name, ticket_count]) => ({ category_name, ticket_count }))
-      .filter(item => item.ticket_count > 0)  // Only show categories that actually have data
-      .sort((a, b) => b.ticket_count - a.ticket_count); // Descending by count
+    // 6. BUILD RESPONSE ARRAY — sorted descending by count, all categories included
+    //    Uses { category, count } shape so the frontend maps item.category / item.count
+    const categoriesPayload = Object.entries(categoryCountMap)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
 
-    // If every category is zero (e.g. fresh DB), still show all buckets so chart isn't blank
-    const categoriesPayload = categoriesArray.length > 0
-      ? categoriesArray
-      : Object.entries(categories).map(([category_name, ticket_count]) => ({ category_name, ticket_count }));
+    // Legacy flat object (kept for any other consumers that read data.categories)
+    const categories = Object.fromEntries(
+      categoriesPayload.map(({ category, count }) => [category, count])
+    );
 
     return res.status(200).json({
       totalInquiries,
       pendingTickets,
       resolutionRate,
-      categories,          // kept for backward-compat
-      categoriesArray: categoriesPayload, // new: dynamic array for the bar chart
+      categories,           // legacy flat map
+      categoriesArray: categoriesPayload, // dynamic array: { category, count }
       ticketStatusDist
     });
 
