@@ -1776,40 +1776,44 @@
         document.getElementById('pending-tickets').innerText = (data.pendingTickets || 0).toLocaleString();
         document.getElementById('resolution-rate').innerText = data.resolutionRate || '0.0%';
 
-        // Map Category values
-        const categories = data.categories || {};
-        const categoriesData = [
-          categories.Enrollment || 0,
-          categories.Tuition || 0,
-          categories["Document Requests"] || 0,
-          categories.Scheduling || 0
+        // Dynamically map categories from the API response
+        const categoriesArray = data.categoriesArray || [];
+        const categoryLabels = categoriesArray.map(item => item.category_name);
+        const categoryCounts = categoriesArray.map(item => item.ticket_count);
+
+        // Color palette — cycles automatically when new categories are added
+        const categoryColors = [
+          'rgba(30, 58, 138, 0.85)',   // Navy
+          'rgba(234, 88, 12, 0.85)',   // Deep Orange
+          'rgba(37, 99, 235, 0.85)',   // Accent Blue
+          'rgba(22, 163, 74, 0.85)',   // Vibrant Green
+          'rgba(124, 58, 237, 0.85)',  // Violet
+          'rgba(220, 38, 38, 0.85)',   // Red
+          'rgba(6, 182, 212, 0.85)',   // Cyan
+          'rgba(245, 158, 11, 0.85)'   // Amber
         ];
+        const categoryBorders = categoryColors.map(c => c.replace('0.85)', '1)'));
+        const bgColors  = categoryLabels.map((_, i) => categoryColors[i % categoryColors.length]);
+        const brdColors = categoryLabels.map((_, i) => categoryBorders[i % categoryBorders.length]);
 
         // Instantiate / update bar chart
         if (categoriesChartInstance) {
-          categoriesChartInstance.data.datasets[0].data = categoriesData;
+          categoriesChartInstance.data.labels = categoryLabels;
+          categoriesChartInstance.data.datasets[0].data = categoryCounts;
+          categoriesChartInstance.data.datasets[0].backgroundColor = bgColors;
+          categoriesChartInstance.data.datasets[0].borderColor = brdColors;
           categoriesChartInstance.update();
         } else {
           const ctx = document.getElementById('categoriesChart').getContext('2d');
           categoriesChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-              labels: ['Enrollment', 'Tuition', 'Document Requests', 'Scheduling'],
+              labels: categoryLabels,
               datasets: [{
                 label: 'Logs Count',
-                data: categoriesData,
-                backgroundColor: [
-                  'rgba(30, 58, 138, 0.85)',  // Navy
-                  'rgba(234, 88, 12, 0.85)',  // Deep Orange
-                  'rgba(37, 99, 235, 0.85)',  // Accent Blue
-                  'rgba(22, 163, 74, 0.85)'   // Vibrant Green
-                ],
-                borderColor: [
-                  'rgb(30, 58, 138)',
-                  'rgb(234, 88, 12)',
-                  'rgb(37, 99, 235)',
-                  'rgb(22, 163, 74)'
-                ],
+                data: categoryCounts,
+                backgroundColor: bgColors,
+                borderColor: brdColors,
                 borderWidth: 1,
                 borderRadius: 8,
                 borderSkipped: false

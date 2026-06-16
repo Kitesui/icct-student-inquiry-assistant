@@ -1227,11 +1227,23 @@ app.get("/api/admin/stats", async (req, res) => {
     const resolutionRateVal = totalInquiries > 0 ? (selfServed / totalInquiries) * 100 : 100.0;
     const resolutionRate = `${resolutionRateVal.toFixed(1)}%`;
 
+    // Build a dynamic array so the frontend can bind chart labels + counts without hardcoding
+    const categoriesArray = Object.entries(categories)
+      .map(([category_name, ticket_count]) => ({ category_name, ticket_count }))
+      .filter(item => item.ticket_count > 0)  // Only show categories that actually have data
+      .sort((a, b) => b.ticket_count - a.ticket_count); // Descending by count
+
+    // If every category is zero (e.g. fresh DB), still show all buckets so chart isn't blank
+    const categoriesPayload = categoriesArray.length > 0
+      ? categoriesArray
+      : Object.entries(categories).map(([category_name, ticket_count]) => ({ category_name, ticket_count }));
+
     return res.status(200).json({
       totalInquiries,
       pendingTickets,
       resolutionRate,
-      categories,
+      categories,          // kept for backward-compat
+      categoriesArray: categoriesPayload, // new: dynamic array for the bar chart
       ticketStatusDist
     });
 
