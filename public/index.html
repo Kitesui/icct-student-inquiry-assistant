@@ -2157,6 +2157,16 @@
         loadStudentTickets();
         fetchHistoryLogs();
 
+        // ── Restore language dropdown from saved profile preference ──
+        const savedLang = userSessionData.system_language;
+        if (savedLang) {
+          const LANG_REVERSE_MAP = { "English": "en", "Filipino": "fil", "Taglish": "taglish" };
+          const langDropdown = document.getElementById("setting-language");
+          if (langDropdown && LANG_REVERSE_MAP[savedLang]) {
+            langDropdown.value = LANG_REVERSE_MAP[savedLang];
+          }
+        }
+
       } catch (err) {
         console.error("Supabase Signup Error Detailing:", err.message || err);
         const regErrorMsg = document.getElementById('reg-error-msg');
@@ -2294,6 +2304,16 @@
         // Re-render tickets & history to unlock content
         loadStudentTickets();
         fetchHistoryLogs();
+
+        // ── Restore language dropdown from saved profile preference ──
+        const savedLang = userSessionData.system_language;
+        if (savedLang) {
+          const LANG_REVERSE_MAP = { "English": "en", "Filipino": "fil", "Taglish": "taglish" };
+          const langDropdown = document.getElementById("setting-language");
+          if (langDropdown && LANG_REVERSE_MAP[savedLang]) {
+            langDropdown.value = LANG_REVERSE_MAP[savedLang];
+          }
+        }
       }
     } catch (err) {
       console.error("Sign-in error:", err);
