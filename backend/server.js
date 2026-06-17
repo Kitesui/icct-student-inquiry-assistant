@@ -502,15 +502,14 @@ ${message}`;
     const contents = [...formattedHistory, userTurn];
 
     // Build the dynamic system instruction using the active language preference
-    // If the admin has defined a customized instruction, we append the language rule to that override.
-    const customHeader = config?.system_instruction;
+    const languageRule = `CRITICAL LANGUAGE RULE: You MUST translate and respond completely and strictly in ${activeLanguage}. Even if the provided CONTEXT is in English, you must translate it and output the entire response in ${activeLanguage}. Never reply in English if the active language is Filipino or Taglish.`;
+
+    const customHeader = finalConfig.system_instruction;
     let dynamicSystemInstruction = "";
     if (customHeader && customHeader.trim().length > 10) {
-      dynamicSystemInstruction = `${customHeader}
-      
-CRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${activeLanguage}. If the handbook context is in English, translate it to ${activeLanguage} when generating your reply. You MUST generate the final response completely and strictly in ${activeLanguage}.`;
+      dynamicSystemInstruction = `${languageRule}\n\n${customHeader}`;
     } else {
-      dynamicSystemInstruction = getSystemInstruction(activeLanguage);
+      dynamicSystemInstruction = `${languageRule}\n\n${getSystemInstruction(activeLanguage)}`;
     }
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
