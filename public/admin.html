@@ -2473,19 +2473,29 @@
             if (thresholdEl) thresholdEl.value = settings.vector_threshold;
             if (thresholdValEl) thresholdValEl.innerText = settings.vector_threshold;
             if (ticketsEl) ticketsEl.value = settings.max_tickets;
+
+            // Load model selection and instructions override directly from the database response
+            if (settings.active_model) {
+              const modelEl = document.getElementById('ai-model');
+              if (modelEl) modelEl.value = settings.active_model;
+            }
+            if (settings.system_instruction) {
+              const instructionEl = document.getElementById('system-instructions');
+              if (instructionEl) instructionEl.value = settings.system_instruction;
+            }
           }
         })
         .catch(err => console.error('Failed to load system settings from database:', err));
 
-      // Load other configs from localStorage
+      // Fallbacks in case DB does not have them yet (local settings legacy check)
       const savedModel = localStorage.getItem('admin_model');
       const savedInstruction = localStorage.getItem('admin_instruction');
 
-      if (savedModel) {
+      if (savedModel && !document.getElementById('ai-model').value) {
         const modelEl = document.getElementById('ai-model');
         if (modelEl) modelEl.value = savedModel;
       }
-      if (savedInstruction) {
+      if (savedInstruction && !document.getElementById('system-instructions').value) {
         const instructionEl = document.getElementById('system-instructions');
         if (instructionEl) instructionEl.value = savedInstruction;
       }
@@ -2510,8 +2520,10 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                vector_threshold: parseFloat(document.getElementById('fallback-threshold').value),
-                max_tickets: parseInt(document.getElementById('ticket-limit').value)
+                vector_threshold: parseFloat(thresholdValue),
+                max_tickets: parseInt(ticketsValue),
+                active_model: selectedModel,
+                system_instruction: instructionValue
               })
             });
             const responseData = await res.json();

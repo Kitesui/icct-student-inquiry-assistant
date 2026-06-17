@@ -403,7 +403,7 @@ app.post("/api/chat", async (req, res) => {
 
     const { data: config, error: configError } = await supabase
       .from('system_settings')
-      .select('vector_threshold')
+      .select('vector_threshold, active_model, system_instruction')
       .eq('id', 1)
       .single();
 
@@ -411,8 +411,11 @@ app.post("/api/chat", async (req, res) => {
     const activeThreshold = (config && config.vector_threshold !== undefined) 
       ? parseFloat(config.vector_threshold) 
       : -1.0;
+
+    // Dynamically choose model (e.g. gemini-1.5-flash, gemini-1.5-pro, or fallback to gemini-2.5-flash if none configured/valid)
+    const activeModel = config?.active_model || MODEL_NAME;
       
-    console.log(`🤖 Live Vector Processing - Active database threshold rule applied: ${activeThreshold}`);
+    console.log(`🤖 Live Vector Processing - Active database threshold rule applied: ${activeThreshold} | Model: ${activeModel}`);
 
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
@@ -483,11 +486,20 @@ ${message}`;
     const contents = [...formattedHistory, userTurn];
 
     // Build the dynamic system instruction using the active language preference
-    const dynamicSystemInstruction = getSystemInstruction(activeLanguage);
+    // If the admin has defined a customized instruction, we append the language rule to that override.
+    const customHeader = config?.system_instruction;
+    let dynamicSystemInstruction = "";
+    if (customHeader && customHeader.trim().length > 10) {
+      dynamicSystemInstruction = `${customHeader}
+      
+CRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${activeLanguage}. If the handbook context is in English, translate it to ${activeLanguage} when generating your reply. You MUST generate the final response completely and strictly in ${activeLanguage}.`;
+    } else {
+      dynamicSystemInstruction = getSystemInstruction(activeLanguage);
+    }
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
     const response = await generateContentWithRetry(
-      MODEL_NAME,
+      activeModel,
       { systemInstruction: dynamicSystemInstruction },
       contents
     );
@@ -1091,7 +1103,7 @@ app.get('/api/admin/settings', async (req, res) => {
 //  POST /api/admin/settings — Save Admin configurations to Supabase
 // ============================================================================
 app.post('/api/admin/settings', async (req, res) => {
-  const { vector_threshold, max_tickets } = req.body;
+  const { vector_threshold, max_tickets, active_model, system_instruction } = req.body;
   try {
     const { data, error } = await supabase
       .from('system_settings')
@@ -1099,11 +1111,13 @@ app.post('/api/admin/settings', async (req, res) => {
         id: 1, 
         vector_threshold: parseFloat(vector_threshold), 
         max_tickets: parseInt(max_tickets),
+        active_model: active_model,
+        system_instruction: system_instruction,
         updated_at: new Date()
       });
       
     if (error) throw error;
-    console.log(`⚙️ System configs updated in database. New Threshold: ${vector_threshold}`);
+    console.log(`⚙️ System configs updated in database. New Threshold: ${vector_threshold} | Model: ${active_model}`);
     return res.json({ success: true, message: "Settings saved to database successfully!" });
   } catch (err) {
     console.error("Error saving settings:", err.message);
