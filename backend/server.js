@@ -946,6 +946,46 @@ app.get("/api/student/tickets/:studentId", async (req, res) => {
 });
 
 // ============================================================================
+//  POST /api/student/settings — Save student language preference
+// ============================================================================
+//  Accepts { studentId, language } — updates system_language in the profiles table.
+//  The /api/chat route reads this field fresh on every request, so the change
+//  takes effect on the very next message the student sends.
+// ============================================================================
+app.post("/api/student/settings", async (req, res) => {
+  try {
+    const { studentId, language } = req.body;
+
+    const ALLOWED_LANGUAGES = ["English", "Filipino", "Taglish"];
+
+    if (!studentId || !language) {
+      return res.status(400).json({ success: false, message: "Missing studentId or language." });
+    }
+
+    if (!ALLOWED_LANGUAGES.includes(language)) {
+      return res.status(400).json({ success: false, message: `Invalid language. Must be one of: ${ALLOWED_LANGUAGES.join(", ")}.` });
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ system_language: language })
+      .eq("student_id", studentId);
+
+    if (error) {
+      console.error("❌ Failed to update student language:", error.message);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+
+    console.log(`🌐 Language preference updated — Student: ${studentId} → ${language}`);
+    return res.status(200).json({ success: true, message: `Language updated to ${language}.` });
+
+  } catch (err) {
+    console.error("❌ /api/student/settings error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error.", details: err.message });
+  }
+});
+
+// ============================================================================
 //  POST /api/tickets/submit — Submit a user-confirmed support ticket (Max 3 Open)
 // ============================================================================
 app.post("/api/tickets/submit", async (req, res) => {

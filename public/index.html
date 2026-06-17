@@ -1682,14 +1682,6 @@
         <h1 class="page-heading">Settings</h1>
 
         <div class="setting-group">
-          <h3>Notifications</h3>
-          <label>
-            <input type="checkbox" id="setting-email-notif" checked />
-            Email notifications
-          </label>
-        </div>
-
-        <div class="setting-group">
           <h3>Language</h3>
           <select id="setting-language">
             <option value="en" selected>English</option>
@@ -1727,7 +1719,7 @@
     <!-- Unified Input Fields -->
     <div class="form-field">
       <label for="signin-id">ID Number</label>
-      <input type="text" id="signin-id" placeholder="e.g. CA202412345 or ADM202400001" />
+      <input type="text" id="signin-id" placeholder="CA202412345" />
     </div>
     <div class="form-field" id="signin-email-field" style="display: none;">
       <label for="signin-email">Email Address</label>
@@ -3016,6 +3008,31 @@
         document.body.classList.add("dark");
       } else {
         document.body.classList.remove("dark");
+      }
+    });
+  }
+
+  // ── Settings Language Change Listener ────────────────────────────
+  // Maps dropdown values to the full language names the backend stores
+  const LANGUAGE_MAP = { en: "English", fil: "Filipino", taglish: "Taglish" };
+
+  const langSelect = document.getElementById("setting-language");
+  if (langSelect) {
+    langSelect.addEventListener("change", async (e) => {
+      const selectedLang = LANGUAGE_MAP[e.target.value] || "English";
+      const studentId = window.currentStudentId;
+      if (!studentId) return; // not logged in, nothing to save
+
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/student/settings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, language: selectedLang }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        console.log(`🌐 Language preference saved: ${selectedLang}`);
+      } catch (err) {
+        console.error("❌ Failed to save language preference:", err);
       }
     });
   }
