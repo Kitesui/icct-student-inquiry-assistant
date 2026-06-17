@@ -38,8 +38,9 @@ const CSV_FILES = [
   path.join(__dirname, "../data/COURSE OFFERING.csv"),
 ];
 
-// ── System Instruction for Gemini ───────────────────────────────────────────
-const SYSTEM_INSTRUCTION = `You are the official ICCT Colleges Student Support Assistant. Your job is to answer student inquiries in a clear, scannable, and well-structured conversational format using the provided university handbook context segments.
+// ── System Instruction Builder for Gemini ───────────────────────────────────
+function getSystemInstruction(language) {
+  return `You are the official ICCT Colleges Student Support Assistant. Your job is to answer student inquiries in a clear, scannable, and well-structured conversational format using the provided university handbook context segments.
 
 CRITICAL HANDLING RULES:
 1. Prioritize the provided context blocks as your absolute source of truth for procedures, policies, names, and contact details.
@@ -50,7 +51,10 @@ CRITICAL FORMATTING RULES:
 1. USE LINE BREAKS AND PARAGRAPHS: Never output large walls of dense text. Break down your thoughts into short paragraphs (2-3 sentences max).
 2. USE BULLET POINTS OR NUMBERED LISTS: When listing requirements, steps, or conditions (like when an SOG is needed), always format them as a clean vertical list using asterisks (*) or numbers (1., 2.). Ensure there is a line break before and after lists.
 3. USE BOLDING SPARINGLY: Use **bold text** only for critical terms, document names (e.g., **Summary of Grades**), or important reminders.
-4. TONE AND LANGUAGE: Maintain an empathetic, helpful tone using a natural mix of English and Taglish (Taglish).`;
+4. TONE AND LANGUAGE: Maintain an empathetic, helpful tone. You MUST generate the final response completely and strictly in ${language}.
+
+CRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${language}. If the handbook context is in English, translate it to ${language} when generating your reply.`;
+}
 
 // ── Google GenAI Initialisation ─────────────────────────────────────────────
 // The SDK reads the API key we pass here; store it in .env as GEMINI_API_KEY.
@@ -479,10 +483,7 @@ ${message}`;
     const contents = [...formattedHistory, userTurn];
 
     // Build the dynamic system instruction using the active language preference
-    const dynamicSystemInstruction = `${SYSTEM_INSTRUCTION.replace(
-      "Maintain an empathetic, helpful tone using a natural mix of English and Taglish (Taglish).",
-      `Maintain an empathetic, helpful tone. You MUST generate the final response completely and strictly in ${activeLanguage}.`
-    )}\n\nCRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${activeLanguage}. If the handbook context is in English, translate it to ${activeLanguage} when generating your reply.`;
+    const dynamicSystemInstruction = getSystemInstruction(activeLanguage);
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
     const response = await generateContentWithRetry(
