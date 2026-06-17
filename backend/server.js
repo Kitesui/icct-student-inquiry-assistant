@@ -464,31 +464,30 @@ app.post("/api/chat", async (req, res) => {
       parts: [{ text: entry.text }],
     }));
 
-    // ── Step 4: Build strict language-enforced prompt template ───────────
-    // Language rule occupies the HIGHEST priority positions (top + bottom)
-    // to prevent raw handbook text from overriding the output language.
-    const strictPromptTemplate = `SYSTEM: Respond strictly in ${activeLanguage}.
-If the student asks a question, translate it to ${activeLanguage} internally and output the answer in ${activeLanguage}.
-
-CONTEXT:
+    // ── Step 4: Build prompt layout with context ───────────────────────────
+    const RAGPrompt = `CONTEXT:
 ${contextText}
 
 QUESTION:
-${message}
+${message}`;
 
-REMINDER: Generate the final response completely in ${activeLanguage}.`;
-
-    const strictUserTurn = {
+    const userTurn = {
       role: "user",
-      parts: [{ text: strictPromptTemplate }],
+      parts: [{ text: RAGPrompt }],
     };
 
-    const contents = [...formattedHistory, strictUserTurn];
+    const contents = [...formattedHistory, userTurn];
+
+    // Build the dynamic system instruction using the active language preference
+    const dynamicSystemInstruction = `${SYSTEM_INSTRUCTION.replace(
+      "Maintain an empathetic, helpful tone using a natural mix of English and Taglish (Taglish).",
+      `Maintain an empathetic, helpful tone. You MUST generate the final response completely and strictly in ${activeLanguage}.`
+    )}\n\nCRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${activeLanguage}. If the handbook context is in English, translate it to ${activeLanguage} when generating your reply.`;
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
     const response = await generateContentWithRetry(
       MODEL_NAME,
-      { systemInstruction: SYSTEM_INSTRUCTION },
+      { systemInstruction: dynamicSystemInstruction },
       contents
     );
 
