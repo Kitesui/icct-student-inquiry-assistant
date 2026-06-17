@@ -401,19 +401,35 @@ app.post("/api/chat", async (req, res) => {
         console.error("❌ Vector generation failed or length is not 1536!");
     }
 
+    // Read local backup file settings
+    let backupData = {};
+    const localFilePath = path.join(__dirname, 'settings.json');
+    if (fs.existsSync(localFilePath)) {
+      try {
+        backupData = JSON.parse(fs.readFileSync(localFilePath, 'utf8'));
+      } catch (e) {
+        console.error("Failed to parse settings backup file:", e);
+      }
+    }
+
     const { data: config, error: configError } = await supabase
       .from('system_settings')
       .select('vector_threshold, active_model, system_instruction')
       .eq('id', 1)
       .single();
 
-    // If the database has a saved value, use it. Otherwise, default to -1.0
-    const activeThreshold = (config && config.vector_threshold !== undefined) 
-      ? parseFloat(config.vector_threshold) 
+    const finalConfig = {
+      ...backupData,
+      ...(config || {})
+    };
+
+    // If there is a saved value, use it. Otherwise, default to -1.0
+    const activeThreshold = (finalConfig.vector_threshold !== undefined) 
+      ? parseFloat(finalConfig.vector_threshold) 
       : -1.0;
 
-    // Dynamically choose model (e.g. gemini-1.5-flash, gemini-1.5-pro, or fallback to gemini-2.5-flash if none configured/valid)
-    const activeModel = config?.active_model || MODEL_NAME;
+    // Dynamically choose model (or fallback to gemini-2.5-flash if none configured/valid)
+    const activeModel = finalConfig.active_model || MODEL_NAME;
       
     console.log(`🤖 Live Vector Processing - Active database threshold rule applied: ${activeThreshold} | Model: ${activeModel}`);
 
@@ -1085,14 +1101,35 @@ app.post("/api/tickets/submit", async (req, res) => {
 // ============================================================================
 app.get('/api/admin/settings', async (req, res) => {
   try {
+    // Read local backup if it exists
+    let backupData = {};
+    const localFilePath = path.join(__dirname, 'settings.json');
+    if (fs.existsSync(localFilePath)) {
+      try {
+        backupData = JSON.parse(fs.readFileSync(localFilePath, 'utf8'));
+      } catch (e) {
+        console.error("Failed to parse settings backup file:", e);
+      }
+    }
+
     const { data, error } = await supabase
       .from('system_settings')
       .select('*')
       .eq('id', 1)
       .single();
       
-    if (error) throw error;
-    return res.json({ success: true, settings: data });
+    if (error) {
+      console.warn("⚠️ Failed to load settings from Supabase database. Falling back to local file:", error.message);
+      return res.json({ success: true, settings: backupData });
+    }
+
+    // Merge database configurations and file backup configurations
+    const mergedSettings = {
+      ...backupData,
+      ...data
+    };
+
+    return res.json({ success: true, settings: mergedSettings });
   } catch (err) {
     console.error("Error fetching settings:", err.message);
     return res.status(500).json({ success: false, error: err.message });
@@ -1105,6 +1142,16 @@ app.get('/api/admin/settings', async (req, res) => {
 app.post('/api/admin/settings', async (req, res) => {
   const { vector_threshold, max_tickets, active_model, system_instruction } = req.body;
   try {
+    // Save locally to server first as a reliable backup
+    const backupSettings = {
+      vector_threshold: parseFloat(vector_threshold),
+      max_tickets: parseInt(max_tickets),
+      active_model,
+      system_instruction
+    };
+    fs.writeFileSync(path.join(__dirname, 'settings.json'), JSON.stringify(backupSettings, null, 2));
+
+    // Try to save to Supabase database
     const { data, error } = await supabase
       .from('system_settings')
       .upsert({ 
@@ -1116,9 +1163,12 @@ app.post('/api/admin/settings', async (req, res) => {
         updated_at: new Date()
       });
       
-    if (error) throw error;
-    console.log(`⚙️ System configs updated in database. New Threshold: ${vector_threshold} | Model: ${active_model}`);
-    return res.json({ success: true, message: "Settings saved to database successfully!" });
+    if (error) {
+      console.warn("⚠️ Database settings upsert failed, using server backup file:", error.message);
+    }
+    
+    console.log(`⚙️ System configs saved successfully! Threshold: ${vector_threshold} | Model: ${active_model}`);
+    return res.json({ success: true, message: "Settings saved successfully!" });
   } catch (err) {
     console.error("Error saving settings:", err.message);
     return res.status(500).json({ success: false, error: err.message });
