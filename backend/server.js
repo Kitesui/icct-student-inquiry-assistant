@@ -1477,7 +1477,7 @@ app.get("/api/admin/stats", async (req, res) => {
 // ============================================================================
 app.get("/api/admin/tickets", async (req, res) => {
   try {
-    const { data: tickets, error } = await supabase
+    const { data, error } = await supabase
       .from("tickets")
       .select("*")
       .order("created_at", { ascending: false });
@@ -1487,38 +1487,7 @@ app.get("/api/admin/tickets", async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    if (!tickets || tickets.length === 0) {
-      return res.json([]);
-    }
-
-    // Extract unique student IDs
-    const studentIds = [...new Set(tickets.map(t => t.student_id))].filter(Boolean);
-    let profilesMap = {};
-
-    if (studentIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("student_id, email, course, year_level")
-        .in("student_id", studentIds);
-
-      if (profilesError) {
-        console.error("⚠️ Error fetching student profiles for tickets:", profilesError.message);
-      } else if (profiles) {
-        profiles.forEach(p => {
-          profilesMap[p.student_id] = p;
-        });
-      }
-    }
-
-    // Merge profile data with ticket details
-    const ticketsWithProfiles = tickets.map(t => ({
-      ...t,
-      student_email: profilesMap[t.student_id]?.email || "N/A",
-      student_course: profilesMap[t.student_id]?.course || "N/A",
-      student_year_level: profilesMap[t.student_id]?.year_level || "N/A"
-    }));
-
-    return res.json(ticketsWithProfiles);
+    return res.json(data);
   } catch (err) {
     console.error("❌ /api/admin/tickets error:", err);
     return res.status(500).json({
