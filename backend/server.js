@@ -706,13 +706,13 @@ app.post("/api/auth/signin", async (req, res) => {
 // ============================================================================
 app.post("/api/auth/signup", async (req, res) => {
   try {
-    const { studentId, email, course, yearLevel, password } = req.body;
+    const { studentId, email, fullName, course, yearLevel, password } = req.body;
 
-    if (!studentId || !email || !course || !yearLevel || !password) {
+    if (!studentId || !email || !fullName || !course || !yearLevel || !password) {
       console.log("⚠️  /api/auth/signup — Missing registration details.");
       return res.status(400).json({
         success: false,
-        error: "All registration fields (ID, email, course, year level, password) are required.",
+        error: "All registration fields (ID, email, full name, course, year level, password) are required.",
       });
     }
 
@@ -746,6 +746,7 @@ app.post("/api/auth/signup", async (req, res) => {
       .insert([{ 
         student_id: studentId, 
         email: email, 
+        full_name: fullName,
         course: course, 
         year_level: yearLevel, 
         password: password 
@@ -1477,7 +1478,7 @@ app.get("/api/admin/stats", async (req, res) => {
 // ============================================================================
 app.get("/api/admin/tickets", async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data: tickets, error } = await supabase
       .from("tickets")
       .select("*")
       .order("created_at", { ascending: false });
@@ -1487,7 +1488,39 @@ app.get("/api/admin/tickets", async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.json(data);
+    if (!tickets || tickets.length === 0) {
+      return res.json([]);
+    }
+
+    // Extract unique student IDs
+    const studentIds = [...new Set(tickets.map(t => t.student_id))].filter(Boolean);
+    let profilesMap = {};
+
+    if (studentIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("student_id, email, full_name, course, year_level")
+        .in("student_id", studentIds);
+
+      if (profilesError) {
+        console.error("⚠️ Error fetching student profiles for tickets:", profilesError.message);
+      } else if (profiles) {
+        profiles.forEach(p => {
+          profilesMap[p.student_id] = p;
+        });
+      }
+    }
+
+    // Merge profile data with ticket details
+    const ticketsWithProfiles = tickets.map(t => ({
+      ...t,
+      student_email: profilesMap[t.student_id]?.email || "N/A",
+      student_name: profilesMap[t.student_id]?.full_name || "N/A",
+      student_course: profilesMap[t.student_id]?.course || "N/A",
+      student_year_level: profilesMap[t.student_id]?.year_level || "N/A"
+    }));
+
+    return res.json(ticketsWithProfiles);
   } catch (err) {
     console.error("❌ /api/admin/tickets error:", err);
     return res.status(500).json({

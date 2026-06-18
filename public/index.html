@@ -1737,6 +1737,10 @@
     <!-- Hidden Signup Extra Fields -->
     <div id="signup-extra-fields" style="display: none; flex-direction: column; gap: 14px; margin-bottom: 14px;">
       <div class="form-field" style="margin-bottom: 0;">
+        <label for="reg-name">Full Name</label>
+        <input type="text" id="reg-name" placeholder="Enter your full name" required />
+      </div>
+      <div class="form-field" style="margin-bottom: 0;">
         <label for="reg-course">Course</label>
         <input type="text" id="reg-course" placeholder="e.g., BSIT, BSCS, BSHM, BSA" required />
       </div>
@@ -2053,11 +2057,12 @@
     const email = document.getElementById("signin-email").value.trim();
 
     if (authState === "signup") {
+      const fullName = document.getElementById("reg-name").value.trim();
       const course = document.getElementById("reg-course").value;
       const year = document.getElementById("reg-year").value;
       const password = document.getElementById("reg-password").value.trim();
 
-      if (!id || !email || !course || !year || !password) {
+      if (!id || !email || !fullName || !course || !year || !password) {
         signinError.textContent = "Please fill in all registration fields.";
         signinError.style.display = "block";
         return;
@@ -2073,6 +2078,7 @@
           body: JSON.stringify({ 
             studentId: id, 
             email: email, 
+            fullName: fullName,
             course: course, 
             yearLevel: year, 
             password: password 
@@ -2149,6 +2155,8 @@
         // Clear input fields
         document.getElementById("signin-id").value = "";
         document.getElementById("signin-email").value = "";
+        const regNameEl = document.getElementById("reg-name");
+        if (regNameEl) regNameEl.value = "";
         document.getElementById("reg-password").value = "";
         if (loginPasswordEl) loginPasswordEl.value = "";
 
