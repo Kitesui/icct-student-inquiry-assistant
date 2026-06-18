@@ -2024,6 +2024,23 @@
       }
       // If currently on profile page, go back to chat
       switchPage("chat");
+      
+      // Clear active conversation and reset welcome screen
+      window.currentConversationId = generateUUID();
+      window.isHistoryPreview = false;
+      chatHistory.length = 0;
+      currentSession = null;
+      if (messagesEl) {
+        messagesEl.innerHTML = `
+          <div class="msg-row bot" id="welcome-msg">
+            <div class="bot-avatar">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div class="msg-bubble">Hello! Welcome to ICCT Student Inquiry Assistant. How may I help you today?</div>
+          </div>
+        `;
+      }
+
       // Re-render tickets & history to show login-required state
       loadStudentTickets();
       renderHistory([]);
