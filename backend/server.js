@@ -362,21 +362,13 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    // ── MANDATORY: Fresh-fetch student language setting per request ──────
-    // This MUST execute before any AI context is built to guarantee the
-    // latest database value is used — never a cached/stale preference.
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('system_language')
-      .eq('student_id', studentId)
-      .single();
-
-    if (profileError) {
-      console.warn(`⚠️ Language profile fetch warning for ${studentId}: ${profileError.message}`);
-    }
-
-    const activeLanguage = userProfile?.system_language || 'English';
-    console.log(`🌐 [FRESH FETCH] Active language for this request: ${activeLanguage}`);
+    // ── Determine language from request (sent directly by the frontend) ──
+    // The frontend reads the dropdown value and sends it with every chat request.
+    // This is more reliable than a DB column since it doesn't require schema changes.
+    const ALLOWED_LANGUAGES = ['English', 'Filipino', 'Taglish'];
+    const requestedLanguage = req.body.language;
+    const activeLanguage = ALLOWED_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'English';
+    console.log(`🌐 Language for this request: ${activeLanguage} (from client)`);
 
     // ── Feature A (Persistent User Logs) ───────────────────────────────
     await supabase.from('chat_logs').insert([{
