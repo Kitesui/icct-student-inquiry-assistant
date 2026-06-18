@@ -740,6 +740,9 @@ app.post("/api/auth/signup", async (req, res) => {
       });
     }
 
+    // Hash the password securely with bcrypt before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Execute a clean record insert call directly to our Supabase 'profiles' data table
     const { error: insertError } = await supabase
       .from("profiles")
@@ -749,7 +752,7 @@ app.post("/api/auth/signup", async (req, res) => {
         full_name: fullName,
         course: course, 
         year_level: yearLevel, 
-        password: password 
+        password: hashedPassword 
       }]);
 
     if (insertError) {
