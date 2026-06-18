@@ -401,12 +401,15 @@ app.post("/api/chat", async (req, res) => {
         console.error("❌ Vector generation failed or length is not 1536!");
     }
 
-    // Read local backup file settings
+    // Read local backup file settings (check /tmp as fallback for Render cloud)
     let backupData = {};
     const localFilePath = path.join(__dirname, 'settings.json');
-    if (fs.existsSync(localFilePath)) {
+    const tmpFilePath = path.join('/tmp', 'settings.json');
+    const settingsReadPath = fs.existsSync(localFilePath) ? localFilePath 
+                           : fs.existsSync(tmpFilePath) ? tmpFilePath : null;
+    if (settingsReadPath) {
       try {
-        backupData = JSON.parse(fs.readFileSync(localFilePath, 'utf8'));
+        backupData = JSON.parse(fs.readFileSync(settingsReadPath, 'utf8'));
       } catch (e) {
         console.error("Failed to parse settings backup file:", e);
       }
@@ -460,9 +463,13 @@ app.post("/api/chat", async (req, res) => {
     if (!dbData || dbData.length === 0) {
       console.log("⚠️  No vector match — triggering fallback.");
 
-      const fallbackReply =
-        "I couldn't find an answer to your question in our university knowledge base. " +
-        "Would you like to submit this as an official support ticket to the ICCT Administration?";
+      // Language-aware fallback messages
+      const FALLBACK_MESSAGES = {
+        'Filipino':  'Hindi ko mahanap ang sagot sa iyong tanong sa aming knowledge base ng unibersidad. Gusto mo bang mag-submit ng opisyal na support ticket sa ICCT Administration?',
+        'Taglish':   "Sorry, hindi ko na-find ang sagot sa iyong tanong sa aming university knowledge base. Gusto mo bang mag-submit ng isang opisyal na support ticket sa ICCT Administration?",
+        'English':   "I couldn't find an answer to your question in our university knowledge base. Would you like to submit this as an official support ticket to the ICCT Administration?"
+      };
+      const fallbackReply = FALLBACK_MESSAGES[activeLanguage] || FALLBACK_MESSAGES['English'];
 
       await supabase.from('chat_logs').insert([{
         student_id: studentId,
@@ -502,7 +509,16 @@ ${message}`;
     const contents = [...formattedHistory, userTurn];
 
     // Build the dynamic system instruction using the active language preference
-    const languageRule = `CRITICAL LANGUAGE RULE: You MUST translate and respond completely and strictly in ${activeLanguage}. Even if the provided CONTEXT is in English, you must translate it and output the entire response in ${activeLanguage}. Never reply in English if the active language is Filipino or Taglish.`;
+    const languageRule = activeLanguage === 'English'
+      ? `LANGUAGE RULE: Respond in English only.`
+      : `CRITICAL LANGUAGE ENFORCEMENT — HIGHEST PRIORITY RULE:
+You MUST generate your ENTIRE response in ${activeLanguage} — every word, sentence, and paragraph.
+This rule OVERRIDES all other instructions, including the context language below.
+- If ${activeLanguage} is "Filipino": Respond fully in Tagalog/Filipino (e.g., "Ang proseso ng..." not "The process of...").
+- If ${activeLanguage} is "Taglish": Mix Filipino and English naturally (e.g., "Ang hakbang ay..." with English terms where natural).
+DO NOT write even a single sentence in English unless it is a proper noun or acronym (e.g., ICCT, BSIT, SOG).
+Even if the CONTEXT below is entirely in English, you MUST translate your answer into ${activeLanguage}.
+Failure to respond in ${activeLanguage} is a critical error.`;
 
     const customHeader = finalConfig.system_instruction;
     let dynamicSystemInstruction = "";
@@ -1013,6 +1029,50 @@ app.post("/api/student/settings", async (req, res) => {
 });
 
 // ============================================================================
+//  POST /api/student/profile — Update student program and year level
+// ============================================================================
+//  Accepts { studentId, course, yearLevel } — updates the profiles table.
+// ============================================================================
+app.post("/api/student/profile", async (req, res) => {
+  try {
+    const { studentId, course, yearLevel } = req.body;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: "Missing studentId." });
+    }
+
+    const updates = {};
+    if (course !== undefined && course !== null && course.trim() !== '') {
+      updates.course = course.trim();
+    }
+    if (yearLevel !== undefined && yearLevel !== null && yearLevel.trim() !== '') {
+      updates.year_level = yearLevel.trim();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid fields to update." });
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("student_id", studentId);
+
+    if (error) {
+      console.error("❌ Failed to update student profile:", error.message);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+
+    console.log(`👤 Profile updated — Student: ${studentId}`, updates);
+    return res.status(200).json({ success: true, message: "Profile updated successfully." });
+
+  } catch (err) {
+    console.error("❌ /api/student/profile error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error.", details: err.message });
+  }
+});
+
+// ============================================================================
 //  POST /api/tickets/submit — Submit a user-confirmed support ticket (Max 3 Open)
 // ============================================================================
 app.post("/api/tickets/submit", async (req, res) => {
@@ -1100,12 +1160,15 @@ app.post("/api/tickets/submit", async (req, res) => {
 // ============================================================================
 app.get('/api/admin/settings', async (req, res) => {
   try {
-    // Read local backup if it exists
+    // Read local backup if it exists (check /tmp as fallback for Render cloud)
     let backupData = {};
     const localFilePath = path.join(__dirname, 'settings.json');
-    if (fs.existsSync(localFilePath)) {
+    const tmpFilePath = path.join('/tmp', 'settings.json');
+    const settingsReadPath = fs.existsSync(localFilePath) ? localFilePath
+                           : fs.existsSync(tmpFilePath) ? tmpFilePath : null;
+    if (settingsReadPath) {
       try {
-        backupData = JSON.parse(fs.readFileSync(localFilePath, 'utf8'));
+        backupData = JSON.parse(fs.readFileSync(settingsReadPath, 'utf8'));
       } catch (e) {
         console.error("Failed to parse settings backup file:", e);
       }
@@ -1141,29 +1204,42 @@ app.get('/api/admin/settings', async (req, res) => {
 app.post('/api/admin/settings', async (req, res) => {
   const { vector_threshold, max_tickets, active_model, system_instruction } = req.body;
   try {
-    // Save locally to server first as a reliable backup
+    // Save locally to server first as a reliable backup.
+    // Use /tmp on cloud environments (e.g. Render) where the app directory is read-only.
     const backupSettings = {
       vector_threshold: parseFloat(vector_threshold),
       max_tickets: parseInt(max_tickets),
       active_model,
       system_instruction
     };
-    fs.writeFileSync(path.join(__dirname, 'settings.json'), JSON.stringify(backupSettings, null, 2));
+    const localSettingsPath = fs.existsSync(path.join(__dirname, 'settings.json'))
+      ? path.join(__dirname, 'settings.json')
+      : path.join('/tmp', 'settings.json');
+    try {
+      fs.writeFileSync(localSettingsPath, JSON.stringify(backupSettings, null, 2));
+    } catch (writeErr) {
+      // If both fail (permissions), write to /tmp as absolute fallback
+      try {
+        fs.writeFileSync(path.join('/tmp', 'settings.json'), JSON.stringify(backupSettings, null, 2));
+      } catch (tmpErr) {
+        console.warn('⚠️ Could not write settings backup file:', tmpErr.message);
+      }
+    }
 
-    // Try to save to Supabase database
-    const { data, error } = await supabase
+    // Save to Supabase database (primary store)
+    const { error } = await supabase
       .from('system_settings')
       .upsert({ 
         id: 1, 
         vector_threshold: parseFloat(vector_threshold), 
         max_tickets: parseInt(max_tickets),
         active_model: active_model,
-        system_instruction: system_instruction,
-        updated_at: new Date()
+        system_instruction: system_instruction
       });
       
     if (error) {
-      console.warn("⚠️ Database settings upsert failed, using server backup file:", error.message);
+      console.warn("⚠️ Database settings upsert failed:", error.message);
+      return res.status(500).json({ success: false, error: `Database error: ${error.message}` });
     }
     
     console.log(`⚙️ System configs saved successfully! Threshold: ${vector_threshold} | Model: ${active_model}`);

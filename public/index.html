@@ -1671,8 +1671,37 @@
           <div class="field-label">Year Level</div>
           <div class="field-value" id="profile-box-year">3rd Year</div>
         </div>
+
+        <!-- Edit Profile Section -->
+        <div id="profile-edit-section" style="margin-top: 20px;">
+          <button id="btn-toggle-edit-profile" style="background: var(--color-primary, #2563eb); color: #fff; border: none; border-radius: 8px; padding: 9px 22px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+            ✏️ Edit Profile
+          </button>
+          <div id="profile-edit-form" style="display:none; margin-top: 16px; background: var(--color-surface, #f8fafc); border: 1px solid var(--color-border, #e2e8f0); border-radius: 12px; padding: 20px;">
+            <div style="margin-bottom: 14px;">
+              <label style="display:block; font-size:13px; font-weight:600; color: var(--color-text-secondary, #64748b); margin-bottom:6px;">Program / Course</label>
+              <input type="text" id="profile-edit-course" placeholder="e.g., BSIT, BSCS, BSHM, BSA" style="width:100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--color-border, #e2e8f0); font-size: 14px; background: var(--color-bg, #fff); color: var(--color-text, #1e293b); box-sizing:border-box;" />
+            </div>
+            <div style="margin-bottom: 16px;">
+              <label style="display:block; font-size:13px; font-weight:600; color: var(--color-text-secondary, #64748b); margin-bottom:6px;">Year Level</label>
+              <select id="profile-edit-year" style="width:100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--color-border, #e2e8f0); font-size: 14px; background: var(--color-bg, #fff); color: var(--color-text, #1e293b); box-sizing:border-box;">
+                <option value="">-- Select Year Level --</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button id="btn-save-profile" style="flex:1; background: var(--color-primary, #2563eb); color:#fff; border:none; border-radius:8px; padding:10px; font-size:14px; font-weight:600; cursor:pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save Changes</button>
+              <button id="btn-cancel-edit-profile" style="flex:1; background: var(--color-surface, #f1f5f9); color: var(--color-text, #1e293b); border: 1.5px solid var(--color-border, #e2e8f0); border-radius:8px; padding:10px; font-size:14px; font-weight:600; cursor:pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">Cancel</button>
+            </div>
+            <div id="profile-edit-msg" style="display:none; margin-top:12px; font-size:13px; font-weight:500; text-align:center; border-radius:8px; padding:8px 12px;"></div>
+          </div>
+        </div>
       </div>
     </div>
+
 
     <!-- ============================================================
          PAGE: Settings
@@ -3053,6 +3082,118 @@
         console.log(`🌐 Language preference saved: ${selectedLang}`);
       } catch (err) {
         console.error("❌ Failed to save language preference:", err);
+      }
+    });
+  }
+
+  // ── Edit Profile Handlers ─────────────────────────────────────────
+  const btnToggleEditProfile = document.getElementById("btn-toggle-edit-profile");
+  const profileEditForm = document.getElementById("profile-edit-form");
+  const btnSaveProfile = document.getElementById("btn-save-profile");
+  const btnCancelEditProfile = document.getElementById("btn-cancel-edit-profile");
+  const profileEditMsg = document.getElementById("profile-edit-msg");
+
+  if (btnToggleEditProfile && profileEditForm) {
+    btnToggleEditProfile.addEventListener("click", () => {
+      const isOpen = profileEditForm.style.display !== "none";
+      profileEditForm.style.display = isOpen ? "none" : "block";
+      btnToggleEditProfile.textContent = isOpen ? "✏️ Edit Profile" : "✖ Close";
+      // Pre-fill with current values
+      if (!isOpen) {
+        const courseEl = document.getElementById("profile-edit-course");
+        const yearEl = document.getElementById("profile-edit-year");
+        const curCourse = document.getElementById("profile-box-course")?.textContent?.trim();
+        const curYear = document.getElementById("profile-box-year")?.textContent?.trim();
+        if (courseEl && curCourse && curCourse !== "N/A") courseEl.value = curCourse;
+        if (yearEl && curYear && curYear !== "N/A") yearEl.value = curYear;
+        if (profileEditMsg) { profileEditMsg.style.display = "none"; profileEditMsg.textContent = ""; }
+      }
+    });
+  }
+
+  if (btnCancelEditProfile && profileEditForm) {
+    btnCancelEditProfile.addEventListener("click", () => {
+      profileEditForm.style.display = "none";
+      if (btnToggleEditProfile) btnToggleEditProfile.textContent = "✏️ Edit Profile";
+      if (profileEditMsg) { profileEditMsg.style.display = "none"; profileEditMsg.textContent = ""; }
+    });
+  }
+
+  if (btnSaveProfile) {
+    btnSaveProfile.addEventListener("click", async () => {
+      const studentId = window.currentStudentId;
+      if (!studentId) {
+        if (profileEditMsg) {
+          profileEditMsg.textContent = "You must be logged in to update your profile.";
+          profileEditMsg.style.background = "#fee2e2"; profileEditMsg.style.color = "#b91c1c";
+          profileEditMsg.style.display = "block";
+        }
+        return;
+      }
+
+      const course = document.getElementById("profile-edit-course")?.value?.trim() || "";
+      const yearLevel = document.getElementById("profile-edit-year")?.value?.trim() || "";
+
+      if (!course && !yearLevel) {
+        if (profileEditMsg) {
+          profileEditMsg.textContent = "Please fill in at least one field.";
+          profileEditMsg.style.background = "#fef3c7"; profileEditMsg.style.color = "#92400e";
+          profileEditMsg.style.display = "block";
+        }
+        return;
+      }
+
+      btnSaveProfile.disabled = true;
+      btnSaveProfile.textContent = "Saving...";
+
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/student/profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, course, yearLevel }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) throw new Error(data.message || `HTTP ${resp.status}`);
+
+        // Update the display on the profile page
+        if (course && document.getElementById("profile-box-course")) {
+          document.getElementById("profile-box-course").textContent = course;
+          window.currentStudentCourse = course;
+        }
+        if (yearLevel && document.getElementById("profile-box-year")) {
+          document.getElementById("profile-box-year").textContent = yearLevel;
+          window.currentStudentYearLevel = yearLevel;
+        }
+        // Update the academic meta subtitle
+        const profileMeta = document.getElementById("student-academic-meta");
+        if (profileMeta) {
+          const y = window.currentStudentYearLevel || yearLevel || "Regular";
+          const p = window.currentStudentCourse || course || "ICCT";
+          profileMeta.innerText = `${y} ${p} Student`;
+        }
+
+        if (profileEditMsg) {
+          profileEditMsg.textContent = "✅ Profile updated successfully!";
+          profileEditMsg.style.background = "#dcfce7"; profileEditMsg.style.color = "#166534";
+          profileEditMsg.style.display = "block";
+        }
+        setTimeout(() => {
+          if (profileEditForm) profileEditForm.style.display = "none";
+          if (btnToggleEditProfile) btnToggleEditProfile.textContent = "✏️ Edit Profile";
+          if (profileEditMsg) { profileEditMsg.style.display = "none"; }
+        }, 1800);
+
+      } catch (err) {
+        console.error("❌ Failed to update profile:", err);
+        if (profileEditMsg) {
+          profileEditMsg.textContent = "❌ Failed to save: " + err.message;
+          profileEditMsg.style.background = "#fee2e2"; profileEditMsg.style.color = "#b91c1c";
+          profileEditMsg.style.display = "block";
+        }
+      } finally {
+        btnSaveProfile.disabled = false;
+        btnSaveProfile.textContent = "Save Changes";
       }
     });
   }
