@@ -1424,27 +1424,17 @@ app.get("/api/admin/stats", async (req, res) => {
     );
 
     // Assign each message to the FIRST matching category only.
-    // Messages that don't match any category go into "Other / General".
     const categoryCountMap = {};
     for (const cat of distinctCategories) categoryCountMap[cat] = 0;
-    let uncategorizedCount = 0;
 
     for (const text of logTexts) {
-      let matched = false;
       for (const cat of sortedCategories) {
         const keywords = categoryKeywords[cat];
         if (keywords.length > 0 && keywords.some(kw => text.includes(kw))) {
           categoryCountMap[cat]++;
-          matched = true;
           break; // ← stop at first match — no double counting
         }
       }
-      if (!matched) uncategorizedCount++;
-    }
-
-    // Add the "Other / General" bucket so bar totals always equal totalInquiries
-    if (uncategorizedCount > 0) {
-      categoryCountMap["Other / General"] = uncategorizedCount;
     }
 
     // 5. AI RESOLUTION MATH
