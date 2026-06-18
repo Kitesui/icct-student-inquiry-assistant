@@ -1,5 +1,5 @@
 // ============================================================================
-//  UniBot Backend Server — ICCT Colleges AI Chatbot (Capstone Project)
+//  Casper AI Backend Server — ICCT Colleges AI Chatbot (Capstone Project)
 // ============================================================================
 //  Tech stack : Express  ·  @google/genai (next-gen SDK)  ·  ES Modules
 //  Responsibilities:
@@ -342,7 +342,7 @@ app.get("/admin", (_req, res) => {
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "online",
-    service: "UniBot API — ICCT Colleges",
+    service: "Casper AI API — ICCT Colleges",
     knowledgeBaseEntries: globalKnowledgeBase.length,
   });
 });
@@ -1833,7 +1833,7 @@ app.post("/api/admin/knowledge/:id/revectorize", async (req, res) => {
 //  SERVER BOOT
 // ============================================================================
 
-console.log("\n🚀 UniBot Backend — ICCT Colleges Capstone");
+console.log("\n🚀 Casper AI Backend — ICCT Colleges Capstone");
 console.log("──────────────────────────────────────────");
 console.log("Loading knowledge base CSV files…\n");
 

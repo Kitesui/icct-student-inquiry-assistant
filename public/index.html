@@ -1616,7 +1616,7 @@
         </div>
         <div class="empty-state" id="tickets-empty" style="display:none;">
           <div class="empty-state-icon">📋</div>
-          <p>No support tickets yet. Tickets are created when UniBot can't find an answer.</p>
+          <p>No support tickets yet. Tickets are created when Casper AI can't find an answer.</p>
         </div>
       </div>
     </div>
@@ -1637,7 +1637,7 @@
         </div>
         <div class="empty-state" id="history-empty" style="display:none;">
           <div class="empty-state-icon">💬</div>
-          <p>No conversations yet. Start chatting with UniBot!</p>
+          <p>No conversations yet. Start chatting with Casper AI!</p>
         </div>
       </div>
     </div>
@@ -2341,7 +2341,7 @@
       }
     } catch (err) {
       console.error("Sign-in error:", err);
-      signinError.textContent = err.message || "Connection error. Make sure the UniBot server is running.";
+      signinError.textContent = err.message || "Connection error. Make sure the Casper AI server is running.";
       signinError.style.display = "block";
     } finally {
       signinSubmit.disabled = false;
@@ -2945,7 +2945,7 @@
     } catch (err) {
       console.error("Chat API error:", err);
       removeTyping();
-      appendErrorBubble("Connection error. Please ensure the UniBot server is running.");
+      appendErrorBubble("Connection error. Please ensure the Casper AI server is running.");
     } finally {
       isWaiting = false;
       sendBtn.disabled = false;
