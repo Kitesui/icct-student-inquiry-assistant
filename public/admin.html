@@ -1521,7 +1521,7 @@
           <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; background: var(--bg-white); padding: 18px 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
             <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 6px;">
               <label for="admin-ticket-search" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Search Tickets</label>
-              <input type="text" id="admin-ticket-search" placeholder="Search by Student ID or Inquiry content..." style="padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; transition: border-color var(--transition);" />
+              <input type="text" id="admin-ticket-search" placeholder="Search by Student ID, Email, Course, or Inquiry..." style="padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; transition: border-color var(--transition);" />
             </div>
             <div style="width: 180px; display: flex; flex-direction: column; gap: 6px;">
               <label for="admin-ticket-filter-status" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Filter by Status</label>
@@ -1562,8 +1562,8 @@
               <table class="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr>
-                    <th class="w-[15%] px-4 py-3 align-middle font-semibold text-slate-700">STUDENT ID</th>
-                    <th class="w-[45%] px-4 py-3 align-middle font-semibold text-slate-700">UNRESOLVED INQUIRY</th>
+                    <th class="w-[20%] px-4 py-3 align-middle font-semibold text-slate-700">STUDENT DETAILS</th>
+                    <th class="w-[40%] px-4 py-3 align-middle font-semibold text-slate-700">UNRESOLVED INQUIRY</th>
                     <th class="w-[10%] px-4 py-3 text-center align-middle font-semibold text-slate-700">PRIORITY</th>
                     <th class="w-[15%] px-4 py-3 text-center font-semibold text-slate-700 select-none">STATUS</th>
                     <th class="w-[15%] px-4 py-3 text-center font-semibold text-slate-700 select-none">ACTION</th>
@@ -1958,9 +1958,11 @@
       const categoryFilter = document.getElementById('admin-ticket-filter-category').value;
 
       let filteredTickets = allTickets.filter(ticket => {
-        // Search text matching student_id or unresolved_inquiry
+        // Search text matching student_id, student_email, student_course or unresolved_inquiry
         const matchesSearch = !searchQuery || 
           (ticket.student_id && ticket.student_id.toLowerCase().includes(searchQuery)) ||
+          (ticket.student_email && ticket.student_email.toLowerCase().includes(searchQuery)) ||
+          (ticket.student_course && ticket.student_course.toLowerCase().includes(searchQuery)) ||
           (ticket.unresolved_inquiry && ticket.unresolved_inquiry.toLowerCase().includes(searchQuery));
 
         // Status matching
@@ -1986,17 +1988,41 @@
         const tr = document.createElement('tr');
         tr.id = `ticket-row-${ticket.id}`;
 
-        // Student ID
+        // Student Details stacked column
         const tdStudent = document.createElement('td');
-        tdStudent.className = 'w-[15%] px-4 py-3 align-middle text-slate-700 font-medium font-semibold text-slate-800';
+        tdStudent.className = 'w-[20%] px-4 py-3 align-middle text-slate-700 font-medium text-slate-800';
         const studentWrapper = document.createElement('div');
-        studentWrapper.className = 'min-h-[44px] flex items-center w-full';
-        studentWrapper.textContent = ticket.student_id;
+        studentWrapper.className = 'min-h-[50px] flex flex-col justify-center w-full gap-0.5';
+
+        const idSpan = document.createElement('span');
+        idSpan.className = 'font-bold text-slate-900 text-sm';
+        idSpan.textContent = ticket.student_id || 'N/A';
+        studentWrapper.appendChild(idSpan);
+
+        if (ticket.student_email && ticket.student_email !== 'N/A') {
+          const emailSpan = document.createElement('span');
+          emailSpan.className = 'text-xs text-slate-500 font-normal truncate max-w-[180px] block';
+          emailSpan.textContent = ticket.student_email;
+          emailSpan.title = ticket.student_email;
+          studentWrapper.appendChild(emailSpan);
+        }
+
+        const courseText = ticket.student_course && ticket.student_course !== 'N/A' ? ticket.student_course : '';
+        const yearText = ticket.student_year_level && ticket.student_year_level !== 'N/A' ? `Yr ${ticket.student_year_level}` : '';
+        const combinedBadge = [courseText, yearText].filter(Boolean).join(' - ');
+
+        if (combinedBadge) {
+          const badgeSpan = document.createElement('span');
+          badgeSpan.className = 'inline-flex gap-1 text-[10px] text-slate-600 font-bold uppercase bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded w-max mt-0.5';
+          badgeSpan.textContent = combinedBadge;
+          studentWrapper.appendChild(badgeSpan);
+        }
+
         tdStudent.appendChild(studentWrapper);
         
         // Unresolved Inquiry
         const tdInquiry = document.createElement('td');
-        tdInquiry.className = 'w-[45%] px-4 py-3 align-middle text-slate-700 font-medium text-slate-600 max-w-md';
+        tdInquiry.className = 'w-[40%] px-4 py-3 align-middle text-slate-700 font-medium text-slate-600 max-w-md';
         
         const questionDiv = document.createElement('div');
         questionDiv.className = 'text-slate-600 truncate-2-lines';
