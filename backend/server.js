@@ -1391,12 +1391,10 @@ app.get("/api/admin/stats", async (req, res) => {
       return res.status(500).json({ error: logsError.message });
     }
 
-    // 4. COUNT MATCHES PER CATEGORY
-    //    Keywords come from the category name + every article title under it.
-    //    Each keyword is stemmed to its first 6 chars for fuzzy prefix matching.
-    //    Example — "Admission" + titles like "SHS Pre Registration", "Requirements"
-    //    → keywords: "admiss", "shs", "pre", "regist", "requir", "applic", ...
-    //    A student typing "how to apply for SHS" now correctly matches "Admission".
+    // 4. COUNT MATCHES PER CATEGORY — each message assigned to exactly ONE category.
+    //    We sort categories by their keyword specificity (descending) so the most specific
+    //    category wins when a message could match multiple.
+    //    This guarantees: sum(categoryCounts) == messages that matched ≥1 category ≤ totalInquiries
     const logTexts = (chatLogs || []).map(l => (l.message_text || "").toLowerCase());
     const stopWords = new Set([
       "and", "or", "the", "for", "of", "a", "an", "in", "on", "to",
@@ -1412,19 +1410,31 @@ app.get("/api/admin/stats", async (req, res) => {
         .map(w => w.slice(0, Math.min(6, w.length)));
     }
 
-    const categoryCountMap = {};
+    // Pre-compute keyword sets per category
+    const categoryKeywords = {};
     for (const cat of distinctCategories) {
       const titles = categoryTitleMap[cat] || [];
-      // Merge keywords from the category name itself + all its article titles
       const allSourceText = [cat, ...titles].join(" ");
-      const keywords = [...new Set(extractStems(allSourceText))];
+      categoryKeywords[cat] = [...new Set(extractStems(allSourceText))];
+    }
 
-      // A message matches if it contains ANY keyword derived from this category's content
-      const count = keywords.length > 0
-        ? logTexts.filter(text => keywords.some(kw => text.includes(kw))).length
-        : 0;
+    // Sort categories by number of keywords descending (more specific first)
+    const sortedCategories = [...distinctCategories].sort(
+      (a, b) => categoryKeywords[b].length - categoryKeywords[a].length
+    );
 
-      categoryCountMap[cat] = count;
+    // Assign each message to the FIRST matching category only
+    const categoryCountMap = {};
+    for (const cat of distinctCategories) categoryCountMap[cat] = 0;
+
+    for (const text of logTexts) {
+      for (const cat of sortedCategories) {
+        const keywords = categoryKeywords[cat];
+        if (keywords.length > 0 && keywords.some(kw => text.includes(kw))) {
+          categoryCountMap[cat]++;
+          break; // ← stop at first match — no double counting
+        }
+      }
     }
 
 
