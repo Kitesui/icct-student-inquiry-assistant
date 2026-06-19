@@ -447,13 +447,13 @@ app.post("/api/chat", async (req, res) => {
     };
 
     // If there is a saved value, use it. Otherwise, default to -1.0
-    const activeThreshold = (finalConfig.vector_threshold !== undefined) 
-      ? parseFloat(finalConfig.vector_threshold) 
+    const activeThreshold = (finalConfig.vector_threshold !== undefined)
+      ? parseFloat(finalConfig.vector_threshold)
       : -1.0;
 
-    // Dynamically choose model (or fallback to gemini-2.5-flash if none configured/valid)
+    // Dynamically choose model (or fallback to MODEL_NAME if none configured/valid)
     const activeModel = finalConfig.active_model || MODEL_NAME;
-      
+
     console.log(`🤖 Live Vector Processing - Active database threshold rule applied: ${activeThreshold} | Model: ${activeModel}`);
 
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
@@ -475,32 +475,76 @@ app.post("/api/chat", async (req, res) => {
         });
     }
 
-    // ── Broad-query supplement: if student asks to LIST ALL something, ────────
-    // vector similarity alone won't retrieve every entry (e.g. "courses available?"
-    // scores high for Certificates but low for Engineering/Criminology entries).
-    // Detect broad listing intent and inject ALL matching KB rows as extra context.
-    const broadListingPatterns = [
-      /\bcourses?\s*(available|offered|offer|you\s*have|list|all)?\b/i,
-      /\bprograms?\s*(available|offered|offer|you\s*have|list|all)?\b/i,
-      /\bwhat\s*(are\s*)?(the\s*)?(available\s*)?(courses?|programs?|degrees?|strands?)\b/i,
-      /\b(list|show|give)\s*(me\s*)?(all\s*)?(the\s*)?(courses?|programs?|degrees?)\b/i,
-      /\bkolehiyo\b|\bkurso\b|\bpwedeng\s*kurso\b/i,
-    ];
-    const isBroadListing = broadListingPatterns.some(p => p.test(message));
+    // ── Broad-query supplement ────────────────────────────────────────────────
+
+    const msgLower = message.toLowerCase();
+
+    // ── Topic detectors ───────────────────────────────────────────────────────
+    const isCourseQuery = [
+      /\bcourses?\b/i, /\bprograms?\b/i, /\bdegrees?\b/i, /\bkolehiyo\b/i,
+      /\bkurso\b/i, /\bstrands?\b/i, /\bwhat.*offer\b/i, /\bavailable.*course\b/i,
+      /\bcourse.*available\b/i, /\blahat.*kurso\b/i, /\bano.*programa\b/i
+    ].some(p => p.test(message));
+
+    const isEnrollmentQuery = [
+      /\bhow.*enroll\b/i, /\benrollment.*procedure\b/i, /\bsteps.*enroll\b/i,
+      /\bpaano.*mag.?enrol\b/i, /\bpaano.*mag.?enroll\b/i,
+      /\benrollment.*process\b/i, /\bprocess.*enrollment\b/i,
+      /\bprocedure.*enroll\b/i, /\bpwede.*enrol\b/i,
+      /\bpaano.*makapag.?enrol\b/i,
+    ].some(p => p.test(message));
+
+    const isRequirementsQuery = [
+      /\brequirements?\b/i, /\bdocuments?\s*(needed|required|checklist)\b/i,
+      /\bwhat.*documents?\b/i, /\bano.*requirements?\b/i,
+      /\bano.*kailangan\b/i, /\brequirements.*enroll\b/i,
+      /\bdocument.*checklist\b/i, /\bwhat.*bring\b/i, /\bwhat.*submit\b/i,
+    ].some(p => p.test(message));
+
+    const isScheduleQuery = [
+      /\bclass\s*schedule\b/i, /\bclass\s*hours?\b/i, /\bschedule.*class\b/i,
+      /\bshift.*class\b/i, /\bmorning.*class\b/i, /\bevening.*class\b/i,
+      /\bsession.*time\b/i, /\bano.*schedule\b/i, /\bklase.*oras\b/i,
+    ].some(p => p.test(message));
+
+    const isPaymentQuery = [
+      /\bhow.*pay\b/i, /\bpayment.*method\b/i, /\bwhere.*pay\b/i,
+      /\bpaano.*magbayad\b/i, /\bsaan.*magbayad\b/i,
+      /\bgcash\b/i, /\bcebuana\b/i, /\becpay\b/i, /\bover.the.counter\b/i,
+      /\bpayment.*center\b/i, /\bdownpayment\b/i,
+    ].some(p => p.test(message));
+
+    // ── Keyword filters for each topic ────────────────────────────────────────
+    const TOPIC_FILTERS = {
+      courses:     ["college of", "bachelor", "associate", "diploma in", "certificate in", "strand", "shs offers", "bsit", "bsba", "bscrim", "bshm", "bsn", "course offering", "arts & sciences", "business & accountancy", "computer studies", "teacher education", "criminology", "engineering", "health sciences", "hospitality", "short term"],
+      enrollment:  ["enrollment procedure", "enroll", "application steps", "step 1", "step 2", "walk-in", "walkin", "online application", "transferee", "shs applicant", "freshmen"],
+      requirements:["requirements", "checklist", "document", "tor", "good moral", "birth certificate", "sf9", "psa", "honorable dismissal", "foreign student", "als passer"],
+      schedule:    ["class schedule", "morning", "noon", "afternoon", "evening", "mth", "class session", "session"],
+      payment:     ["gcash", "ecpay", "cebuana", "mlhuillier", "downpayment", "over-the-counter", "payment", "reference number", "refnum"],
+    };
 
     let supplementalContext = "";
-    if (isBroadListing) {
-      // Pull ALL course-related entries from the in-memory knowledge base (loaded from CSV)
-      const courseKeywords = ["course", "program", "degree", "college", "bachelor", "associate", "diploma", "certificate", "strand", "shs", "senior high"];
-      const courseEntries = globalKnowledgeBase.filter(entry => {
+    const supplementalParts = [];
+
+    const addSupplemental = (label, filterWords) => {
+      const entries = globalKnowledgeBase.filter(entry => {
         const text = `${entry.topic || ""} ${entry.context || ""} ${entry.keywords || ""}`.toLowerCase();
-        return courseKeywords.some(kw => text.includes(kw));
+        return filterWords.some(kw => text.includes(kw));
       });
-      if (courseEntries.length > 0) {
-        supplementalContext = "\n\n[COMPLETE COURSE CATALOG FROM KNOWLEDGE BASE]\n" +
-          courseEntries.map(e => e.context || e.topic).join("\n\n");
-        console.log(`📚 Broad listing detected — injecting ${courseEntries.length} full KB course entries as supplemental context.`);
+      if (entries.length > 0) {
+        supplementalParts.push(`[${label} — FROM KNOWLEDGE BASE]\n` + entries.map(e => e.context || e.topic).join("\n\n"));
+        console.log(`📚 Broad query (${label}) — injecting ${entries.length} KB entries.`);
       }
+    };
+
+    if (isCourseQuery)      addSupplemental("COMPLETE COURSE CATALOG", TOPIC_FILTERS.courses);
+    if (isEnrollmentQuery)  addSupplemental("ENROLLMENT PROCEDURES", TOPIC_FILTERS.enrollment);
+    if (isRequirementsQuery) addSupplemental("ADMISSION REQUIREMENTS", TOPIC_FILTERS.requirements);
+    if (isScheduleQuery)    addSupplemental("CLASS SCHEDULES", TOPIC_FILTERS.schedule);
+    if (isPaymentQuery)     addSupplemental("PAYMENT METHODS", TOPIC_FILTERS.payment);
+
+    if (supplementalParts.length > 0) {
+      supplementalContext = "\n\n" + supplementalParts.join("\n\n");
     }
 
     const contextText = (dbData && dbData.length > 0
