@@ -48,6 +48,9 @@ CRITICAL HANDLING RULES:
 2. If a student mentions specific waiting timelines (like '3 days', 'isang linggo') or personal emotional panic that isn't explicitly written in the dry handbook rules, do not panic or return an empty string. Use your natural AI reasoning to calmly map their situation to the closest corresponding handbook procedure (e.g., explaining the standard verification timeline, checking the student ledger, or advising them on who to contact).
 3. If the provided context block completely lacks any relevant topics or procedures matching the user's operational problem, output exactly 'FALLBACK_TRIGGER' so our system can safely offer an official administrative support ticket.
 
+CRITICAL LISTING RULE:
+When a student asks for ALL available items (e.g., "what courses are available?", "list all programs", "what are the requirements?"), you MUST enumerate EVERY SINGLE item mentioned across ALL provided context blocks — do not stop early, do not summarize with "and more", do not skip any entry. Organize them by group/category if there are multiple types, but include ALL of them. Stopping early or saying "for more info visit campus" before listing everything is NOT acceptable.
+
 CRITICAL FORMATTING RULES:
 1. USE LINE BREAKS AND PARAGRAPHS: Never output large walls of dense text. Break down your thoughts into short paragraphs (2-3 sentences max).
 2. USE BULLET POINTS OR NUMBERED LISTS: When listing requirements, steps, or conditions (like when an SOG is needed), always format them as a clean vertical list using asterisks (*) or numbers (1., 2.). Ensure there is a line break before and after lists.
@@ -456,7 +459,7 @@ app.post("/api/chat", async (req, res) => {
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
         match_threshold: activeThreshold,
-        match_count: 10
+        match_count: 15
     });
 
     if (dbError) {
