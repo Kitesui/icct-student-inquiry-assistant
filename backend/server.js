@@ -1338,7 +1338,8 @@ app.get("/api/admin/analytics", async (req, res) => {
     // 1. Fetch chat logs to determine total inquiries and categorize them
     const { data: chatLogs, error: logsError } = await supabase
       .from("chat_logs")
-      .select("*");
+      .select("*")
+      .neq("student_id", "anonymous");
 
     if (logsError) {
       console.error("❌ Analytics error fetching chat logs:", logsError.message);
@@ -1470,8 +1471,9 @@ app.get("/api/admin/stats", async (req, res) => {
     // 3. FETCH CHAT LOGS FOR KEYWORD COUNTING
     const { data: chatLogs, error: logsError } = await supabase
       .from("chat_logs")
-      .select("message_text")
-      .eq("sender", "user");
+      .select("message_text, student_id")
+      .eq("sender", "user")
+      .neq("student_id", "anonymous");
 
     if (logsError) {
       console.error("❌ Stats error fetching chat logs:", logsError.message);
@@ -1511,17 +1513,22 @@ app.get("/api/admin/stats", async (req, res) => {
     );
 
     // Assign each message to the FIRST matching category only.
+    // Unmatched messages go into "Other" so sum always equals totalInquiries.
     const categoryCountMap = {};
     for (const cat of distinctCategories) categoryCountMap[cat] = 0;
+    categoryCountMap["Other"] = 0;
 
     for (const text of logTexts) {
+      let matched = false;
       for (const cat of sortedCategories) {
         const keywords = categoryKeywords[cat];
         if (keywords.length > 0 && keywords.some(kw => text.includes(kw))) {
           categoryCountMap[cat]++;
+          matched = true;
           break; // ← stop at first match — no double counting
         }
       }
+      if (!matched) categoryCountMap["Other"]++;
     }
 
     // 5. AI RESOLUTION MATH
