@@ -459,7 +459,7 @@ app.post("/api/chat", async (req, res) => {
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
         match_threshold: activeThreshold,
-        match_count: 15
+        match_count: 6
     });
 
     if (dbError) {
@@ -527,7 +527,7 @@ app.post("/api/chat", async (req, res) => {
 
     let supplementalContext = "";
     const supplementalParts = [];
-    const MAX_SUPPLEMENTAL_CHARS = 5000; // Stay well within Groq's 6k TPM limit
+    const MAX_SUPPLEMENTAL_CHARS = 2500; // Keep each prompt under ~1000 tokens for Groq 6k TPM limit
 
     const addSupplemental = (label, topicPrefixes) => {
       const entries = globalKnowledgeBase.filter(entry =>
