@@ -674,7 +674,32 @@ app.post("/api/auth/signin", async (req, res) => {
     }
 
     // ── Verify profile exists and password matches ─────────────────────────
-    if (profile && profile.password === password) {
+    let isMatch = false;
+    if (profile) {
+      if (profile.password && (profile.password.startsWith("$2b$") || profile.password.startsWith("$2a$"))) {
+        isMatch = await bcrypt.compare(password, profile.password);
+      } else {
+        // Fallback for legacy plain-text passwords
+        isMatch = (profile.password === password);
+        
+        // Auto-upgrade legacy plain-text password to bcrypt hash on successful sign-in
+        if (isMatch) {
+          console.log(`🔄 Upgrading legacy plain-text password to bcrypt hash for Student ID: ${studentId}`);
+          try {
+            const hashed = await bcrypt.hash(password, 10);
+            await supabase
+              .from("profiles")
+              .update({ password: hashed })
+              .eq("student_id", studentId);
+            profile.password = hashed;
+          } catch (updateErr) {
+            console.error(`⚠️ Failed to auto-migrate password for Student: ${studentId}`, updateErr.message);
+          }
+        }
+      }
+    }
+
+    if (isMatch) {
       console.log(`✅ Student logged in: ${studentId}`);
       return res.json({
         success: true,
