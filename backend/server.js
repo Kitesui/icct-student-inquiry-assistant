@@ -14,6 +14,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
 import bcrypt from "bcrypt";
@@ -59,6 +60,7 @@ CRITICAL LANGUAGE ENFORCEMENT: Respond strictly in ${language}. If the handbook 
 // ── Google GenAI Initialisation ─────────────────────────────────────────────
 // The SDK reads the API key we pass here; store it in .env as GEMINI_API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ── Supabase Cloud Database Initialisation ──────────────────────────────────
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -102,30 +104,49 @@ async function embedWithRetry(content, maxRetries = 4) {
 }
 
 async function generateContentWithRetry(model, config, contents, maxRetries = 4) {
+  // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
+  const messages = [];
+
+  // Add system instruction if provided
+  if (config?.systemInstruction) {
+    messages.push({ role: "system", content: config.systemInstruction });
+  }
+
+  // Convert Gemini turns { role, parts: [{ text }] } → { role, content }
+  for (const turn of contents) {
+    const role = turn.role === "model" ? "assistant" : "user";
+    const content = turn.parts?.map(p => p.text).join("") ?? "";
+    messages.push({ role, content });
+  }
+
+  // Use Groq model name (ignore the Gemini model name passed in)
+  const groqModel = "llama-3.3-70b-versatile";
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await ai.models.generateContent({
-        model,
-        config,
-        contents,
+      const completion = await groq.chat.completions.create({
+        model: groqModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024,
       });
+
+      const text = completion.choices[0]?.message?.content ?? "";
+      // Return a response object that mirrors the Gemini response shape
+      return { text };
     } catch (err) {
-      const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED");
+      const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate_limit");
       if (is429 && attempt < maxRetries) {
         let backoff = Math.pow(2, attempt) * 1000;
-        const match = err.message?.match(/Please retry in (\d+(?:\.\d+)?)s/i);
+        const match = err.message?.match(/try again in ([\d.]+)s/i);
         if (match) {
-          const seconds = parseFloat(match[1]);
-          backoff = Math.ceil(seconds * 1000) + 1000;
+          backoff = Math.ceil(parseFloat(match[1]) * 1000) + 500;
         }
-
-        // If the backoff is too long (more than 5 seconds), abort and throw the error to prevent gateway timeout
         if (backoff > 5000) {
           console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
           throw err;
         }
-
-        console.warn(`  ⏳ Rate limited on generateContent API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
+        console.warn(`  ⏳ Rate limited on Groq API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
         await sleep(backoff);
       } else {
         throw err;
@@ -531,7 +552,7 @@ Failure to respond in ${activeLanguage} is a critical error.`;
       contents
     );
 
-    let rawReply = response.text?.trim() ?? "";
+    let rawReply = (typeof response.text === "string" ? response.text : "").trim();
 
     // ── Fallback if empty, null, or undefined ─────────────────────────────
     if (!rawReply) {
