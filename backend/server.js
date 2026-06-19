@@ -30,7 +30,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const PORT = 5000;
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-3.5-flash";
 
 // Paths to the 3 knowledge-base CSV files (relative to data directory)
 const CSV_FILES = [
@@ -110,7 +110,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
   const isGemini = typeof model === "string" && model.startsWith("gemini");
 
   if (isGemini) {
-    const geminiModels = [model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+    const geminiModels = [model, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
     const uniqueModels = [...new Set(geminiModels)];
     const errors = [];
 
@@ -2120,14 +2120,14 @@ supabase.from('system_settings')
   .eq('id', 1)
   .single()
   .then(({ data, error }) => {
-    if (!error && data && (data.active_model === 'llama-3.3-70b-versatile' || data.active_model === 'gemma2-9b-it' || !data.active_model || data.active_model === 'gemini-2.0-flash-lite')) {
+    if (!error && data && (data.active_model === 'llama-3.3-70b-versatile' || data.active_model === 'gemma2-9b-it' || !data.active_model || data.active_model === 'gemini-2.0-flash-lite' || data.active_model === 'gemini-1.5-flash')) {
       console.log("  ⚠️ DB system settings is configured with rate-limited/empty model:", data.active_model);
       supabase.from('system_settings')
-        .update({ active_model: 'gemini-1.5-flash' })
+        .update({ active_model: 'gemini-3.5-flash' })
         .eq('id', 1)
         .then(({ error: updateError }) => {
-          if (updateError) console.error("  ❌ Failed to verify/update active_model in DB to gemini-1.5-flash:", updateError.message);
-          else console.log("  ✅ DB system settings active_model verified/updated to gemini-1.5-flash.");
+          if (updateError) console.error("  ❌ Failed to verify/update active_model in DB to gemini-3.5-flash:", updateError.message);
+          else console.log("  ✅ DB system settings active_model verified/updated to gemini-3.5-flash.");
         })
         .catch(err => console.error("  ❌ Failed to update active_model in DB settings:", err.message));
     } else if (error) {
