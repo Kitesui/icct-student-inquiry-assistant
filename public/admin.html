@@ -2584,11 +2584,11 @@
             if (res.status === 200 && responseData.success) {
               showToast('Settings saved successfully!');
             } else {
-              showToast('Failed to save settings to database.');
+              showToast('Failed to save settings: ' + (responseData.error || 'Unknown error'));
             }
           } catch (err) {
             console.error('Failed to save configuration settings:', err);
-            showToast('Network error saving settings.');
+            showToast('Network error saving settings: ' + err.message);
           }
         });
       }
