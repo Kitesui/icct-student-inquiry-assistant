@@ -456,7 +456,7 @@ app.post("/api/chat", async (req, res) => {
     const { data: dbData, error: dbError } = await supabase.rpc('match_documents', {
         query_embedding: queryEmbedding,
         match_threshold: activeThreshold,
-        match_count: 4
+        match_count: 10
     });
 
     if (dbError) {
