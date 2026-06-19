@@ -30,7 +30,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const PORT = 5000;
-const MODEL_NAME = "gemini-2.0-flash-lite";
+const MODEL_NAME = "gemini-1.5-flash";
 
 // Paths to the 3 knowledge-base CSV files (relative to data directory)
 const CSV_FILES = [
@@ -107,53 +107,120 @@ async function embedWithRetry(content, maxRetries = 4) {
 }
 
 async function generateContentWithRetry(model, config, contents, maxRetries = 4) {
-  // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
-  const messages = [];
+  const isGemini = typeof model === "string" && model.startsWith("gemini");
 
-  // Add system instruction if provided
-  if (config?.systemInstruction) {
-    messages.push({ role: "system", content: config.systemInstruction });
-  }
+  if (isGemini) {
+    const geminiModels = [model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+    const uniqueModels = [...new Set(geminiModels)];
 
-  // Convert Gemini turns { role, parts: [{ text }] } → { role, content }
-  for (const turn of contents) {
-    const role = turn.role === "model" ? "assistant" : "user";
-    const content = turn.parts?.map(p => p.text).join("") ?? "";
-    messages.push({ role, content });
-  }
+    for (const currentModel of uniqueModels) {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const result = await ai.models.generateContent({
+            model: currentModel,
+            config: config,
+            contents: contents,
+          });
+          const text = result.text ?? "";
+          return { text };
+        } catch (err) {
+          const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
+          const isLimitZero = err.message?.includes("limit: 0") || err.message?.includes("quota exceeded") || err.message?.includes("Quota exceeded");
+          
+          if (isLimitZero) {
+            console.warn(`  ⚠️ Gemini model ${currentModel} is unavailable (limit 0). Trying next model...`);
+            break; // Try next model in list
+          }
 
-  // llama-3.3-70b-versatile: proven working model on Groq free tier
-  const groqModel = "llama-3.3-70b-versatile";
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const completion = await groq.chat.completions.create({
-        model: groqModel,
-        messages,
-        temperature: 0.7,
-        max_tokens: 800,
-      });
-
-      const text = completion.choices[0]?.message?.content ?? "";
-      // Return a response object that mirrors the Gemini response shape
-      return { text };
-    } catch (err) {
-      const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate_limit");
-      if (is429 && attempt < maxRetries) {
-        let backoff = Math.pow(2, attempt) * 1000;
-        const match = err.message?.match(/try again in ([\d.]+)s/i);
-        if (match) {
-          backoff = Math.ceil(parseFloat(match[1]) * 1000) + 500;
+          if (is429 && attempt < maxRetries) {
+            let backoff = Math.pow(2, attempt) * 1000;
+            const match = err.message?.match(/Please retry in (\d+(?:\.\d+)?)s/i);
+            if (match) {
+              backoff = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
+            }
+            if (backoff > 5000) {
+              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
+              throw err;
+            }
+            console.warn(`  ⏳ Rate limited on Gemini generateContent (${currentModel}) — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
+            await sleep(backoff);
+          } else {
+            throw err;
+          }
         }
-        if (backoff > 5000) {
-          console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
-          throw err;
-        }
-        console.warn(`  ⏳ Rate limited on Groq API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
-        await sleep(backoff);
-      } else {
-        throw err;
       }
+    }
+    throw new Error("All Gemini models failed to generate content.");
+  } else {
+    // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
+    const messages = [];
+
+    // Add system instruction if provided
+    if (config?.systemInstruction) {
+      messages.push({ role: "system", content: config.systemInstruction });
+    }
+
+    // Convert Gemini turns { role, parts: [{ text }] } → { role, content }
+    for (const turn of contents) {
+      const role = turn.role === "model" ? "assistant" : "user";
+      const content = turn.parts?.map(p => p.text).join("") ?? "";
+      messages.push({ role, content });
+    }
+
+    // llama-3.3-70b-versatile: proven working model on Groq free tier
+    const groqModel = "llama-3.3-70b-versatile";
+
+    try {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const completion = await groq.chat.completions.create({
+            model: groqModel,
+            messages,
+            temperature: 0.7,
+            max_tokens: 800,
+          });
+
+          const text = completion.choices[0]?.message?.content ?? "";
+          return { text };
+        } catch (err) {
+          const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate_limit");
+          if (is429 && attempt < maxRetries) {
+            let backoff = Math.pow(2, attempt) * 1000;
+            const match = err.message?.match(/try again in ([\d.]+)s/i);
+            if (match) {
+              backoff = Math.ceil(parseFloat(match[1]) * 1000) + 500;
+            }
+            if (backoff > 5000) {
+              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
+              throw err;
+            }
+            console.warn(`  ⏳ Rate limited on Groq API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
+            await sleep(backoff);
+          } else {
+            throw err;
+          }
+        }
+      }
+    } catch (groqErr) {
+      console.warn("⚠️ Groq text generation failed, falling back to Gemini models list. Error:", groqErr.message);
+      
+      const fallbackModels = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+      for (const fallbackModel of fallbackModels) {
+        try {
+          console.log(`  🔄 Trying fallback model: ${fallbackModel}...`);
+          const result = await ai.models.generateContent({
+            model: fallbackModel,
+            config: config,
+            contents: contents,
+          });
+          const text = result.text ?? "";
+          console.log(`  ✅ Fallback model ${fallbackModel} succeeded.`);
+          return { text };
+        } catch (geminiErr) {
+          console.warn(`  ❌ Fallback model ${fallbackModel} failed:`, geminiErr.message);
+        }
+      }
+      throw groqErr; // rethrow the original Groq error to invoke the standard ticket fallback
     }
   }
 }
@@ -527,7 +594,7 @@ app.post("/api/chat", async (req, res) => {
 
     let supplementalContext = "";
     const supplementalParts = [];
-    const MAX_SUPPLEMENTAL_CHARS = 2500; // Keep each prompt under ~1000 tokens for Groq 6k TPM limit
+    const MAX_SUPPLEMENTAL_CHARS = 10000; // Increased to 10000 to prevent context truncation since Gemini has large context limits
 
     const addSupplemental = (label, topicPrefixes) => {
       const entries = globalKnowledgeBase.filter(entry =>
@@ -2026,6 +2093,28 @@ console.log("Loading knowledge base CSV files…\n");
 loadCSVFiles();
 
 console.log(`\n🗄️  Supabase connected → ${supabaseUrl}`);
+
+// Ensure system_settings is configured to use gemini-1.5-flash if it is currently set to a decommissioned/rate-limited model or is empty
+supabase.from('system_settings')
+  .select('active_model')
+  .eq('id', 1)
+  .single()
+  .then(({ data, error }) => {
+    if (!error && data && (data.active_model === 'llama-3.3-70b-versatile' || data.active_model === 'gemma2-9b-it' || !data.active_model || data.active_model === 'gemini-2.0-flash-lite')) {
+      console.log("  ⚠️ DB system settings is configured with rate-limited/empty model:", data.active_model);
+      supabase.from('system_settings')
+        .update({ active_model: 'gemini-1.5-flash' })
+        .eq('id', 1)
+        .then(({ error: updateError }) => {
+          if (updateError) console.error("  ❌ Failed to verify/update active_model in DB to gemini-1.5-flash:", updateError.message);
+          else console.log("  ✅ DB system settings active_model verified/updated to gemini-1.5-flash.");
+        });
+    } else if (error) {
+      console.warn("  ⚠️ Could not read system_settings (table might not exist or ID 1 missing):", error.message);
+    } else {
+      console.log("  ✓ DB system settings active_model verified:", data.active_model);
+    }
+  });
 
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
