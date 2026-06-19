@@ -2121,12 +2121,16 @@ supabase.from('system_settings')
         .then(({ error: updateError }) => {
           if (updateError) console.error("  ❌ Failed to verify/update active_model in DB to gemini-1.5-flash:", updateError.message);
           else console.log("  ✅ DB system settings active_model verified/updated to gemini-1.5-flash.");
-        });
+        })
+        .catch(err => console.error("  ❌ Failed to update active_model in DB settings:", err.message));
     } else if (error) {
       console.warn("  ⚠️ Could not read system_settings (table might not exist or ID 1 missing):", error.message);
     } else {
       console.log("  ✓ DB system settings active_model verified:", data.active_model);
     }
+  })
+  .catch(err => {
+    console.error("  ⚠️ Supabase startup query failed:", err.message);
   });
 
 app.listen(PORT, () => {
