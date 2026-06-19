@@ -515,41 +515,55 @@ app.post("/api/chat", async (req, res) => {
     ].some(p => p.test(message));
 
     // ── Keyword filters for each topic ────────────────────────────────────────
-    const TOPIC_FILTERS = {
-      courses:     ["college of", "bachelor", "associate", "diploma in", "certificate in", "strand", "shs offers", "bsit", "bsba", "bscrim", "bshm", "bsn", "course offering", "arts & sciences", "business & accountancy", "computer studies", "teacher education", "criminology", "engineering", "health sciences", "hospitality", "short term"],
-      enrollment:  ["enrollment procedure", "enroll", "application steps", "step 1", "step 2", "walk-in", "walkin", "online application", "transferee", "shs applicant", "freshmen"],
-      requirements:["requirements", "checklist", "document", "tor", "good moral", "birth certificate", "sf9", "psa", "honorable dismissal", "foreign student", "als passer"],
-      schedule:    ["class schedule", "morning", "noon", "afternoon", "evening", "mth", "class session", "session"],
-      payment:     ["gcash", "ecpay", "cebuana", "mlhuillier", "downpayment", "over-the-counter", "payment", "reference number", "refnum"],
+    // Use TOPIC PREFIX matching (entry.topic) for precision — avoids pulling in
+    // every entry that happens to mention "certificate" or "enrollment" in its body.
+    const TOPIC_PREFIX_FILTERS = {
+      courses:      ["Courses -"],
+      enrollment:   ["Enrollment - New College Freshmen", "Enrollment - Transferees", "Enrollment - New Senior High"],
+      requirements: ["Admissions - Requirements", "Admissions - Foreign"],
+      schedule:     ["Schedule -"],
+      payment:      ["Accounting -"],
     };
 
     let supplementalContext = "";
     const supplementalParts = [];
+    const MAX_SUPPLEMENTAL_CHARS = 5000; // Stay well within Groq's 6k TPM limit
 
-    const addSupplemental = (label, filterWords) => {
-      const entries = globalKnowledgeBase.filter(entry => {
-        const text = `${entry.topic || ""} ${entry.context || ""} ${entry.keywords || ""}`.toLowerCase();
-        return filterWords.some(kw => text.includes(kw));
-      });
+    const addSupplemental = (label, topicPrefixes) => {
+      const entries = globalKnowledgeBase.filter(entry =>
+        topicPrefixes.some(prefix => (entry.topic || "").startsWith(prefix))
+      );
       if (entries.length > 0) {
-        supplementalParts.push(`[${label} — FROM KNOWLEDGE BASE]\n` + entries.map(e => e.context || e.topic).join("\n\n"));
-        console.log(`📚 Broad query (${label}) — injecting ${entries.length} KB entries.`);
+        let block = `[${label} — FROM KNOWLEDGE BASE]\n` +
+          entries.map(e => e.context || e.topic).join("\n\n");
+        // Truncate if oversized
+        if (block.length > MAX_SUPPLEMENTAL_CHARS) {
+          block = block.slice(0, MAX_SUPPLEMENTAL_CHARS) + "\n...[truncated for brevity]";
+        }
+        supplementalParts.push(block);
+        console.log(`📚 Broad query (${label}) — injecting ${entries.length} KB entries (${block.length} chars).`);
       }
     };
 
-    if (isCourseQuery)      addSupplemental("COMPLETE COURSE CATALOG", TOPIC_FILTERS.courses);
-    if (isEnrollmentQuery)  addSupplemental("ENROLLMENT PROCEDURES", TOPIC_FILTERS.enrollment);
-    if (isRequirementsQuery) addSupplemental("ADMISSION REQUIREMENTS", TOPIC_FILTERS.requirements);
-    if (isScheduleQuery)    addSupplemental("CLASS SCHEDULES", TOPIC_FILTERS.schedule);
-    if (isPaymentQuery)     addSupplemental("PAYMENT METHODS", TOPIC_FILTERS.payment);
+    if (isCourseQuery)       addSupplemental("COMPLETE COURSE CATALOG", TOPIC_PREFIX_FILTERS.courses);
+    if (isEnrollmentQuery)   addSupplemental("ENROLLMENT PROCEDURES",   TOPIC_PREFIX_FILTERS.enrollment);
+    if (isRequirementsQuery) addSupplemental("ADMISSION REQUIREMENTS",  TOPIC_PREFIX_FILTERS.requirements);
+    if (isScheduleQuery)     addSupplemental("CLASS SCHEDULES",         TOPIC_PREFIX_FILTERS.schedule);
+    if (isPaymentQuery)      addSupplemental("PAYMENT METHODS",         TOPIC_PREFIX_FILTERS.payment);
 
     if (supplementalParts.length > 0) {
       supplementalContext = "\n\n" + supplementalParts.join("\n\n");
     }
 
-    const contextText = (dbData && dbData.length > 0
-        ? dbData.map(row => row.content).join('\n\n')
-        : "") + supplementalContext;
+    // For broad queries, the supplemental context IS the answer — skip unrelated vector
+    // results (which score ~0.24 and are mostly irrelevant for listing questions).
+    // For specific queries, use vector results only (no supplemental).
+    const useSupplementalOnly = supplementalParts.length > 0;
+    const contextText = useSupplementalOnly
+        ? supplementalContext.trim()
+        : (dbData && dbData.length > 0 ? dbData.map(row => row.content).join('\n\n') : "");
+
+
 
 
     // ── Step 3: Feed context to Gemini or activate fallback ──────────────
