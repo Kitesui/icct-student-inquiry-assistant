@@ -1510,18 +1510,28 @@ app.get("/api/admin/stats", async (req, res) => {
       (a, b) => categoryKeywords[b].length - categoryKeywords[a].length
     );
 
-    // Assign each message to the FIRST matching category only.
+    // Assign each message to the category with the MOST keyword hits (best-match).
+    // "First match wins" was biased toward General Academic Policies because it has
+    // 34 titles and therefore far more keywords than Admission (8) or Course Offering (11).
     const categoryCountMap = {};
     for (const cat of distinctCategories) categoryCountMap[cat] = 0;
 
     for (const text of logTexts) {
-      for (const cat of sortedCategories) {
+      let bestCat = null;
+      let bestScore = 0;
+
+      for (const cat of distinctCategories) {
         const keywords = categoryKeywords[cat];
-        if (keywords.length > 0 && keywords.some(kw => text.includes(kw))) {
-          categoryCountMap[cat]++;
-          break; // ← stop at first match — no double counting
+        // Normalise score by keyword pool size so larger categories don't win by default
+        const hits = keywords.filter(kw => text.includes(kw)).length;
+        const score = keywords.length > 0 ? hits / keywords.length : 0;
+        if (hits > 0 && score > bestScore) {
+          bestScore = score;
+          bestCat = cat;
         }
       }
+
+      if (bestCat) categoryCountMap[bestCat]++;
     }
 
     // 5. AI RESOLUTION MATH
