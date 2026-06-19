@@ -29,7 +29,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const PORT = 5000;
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.0-flash";
 
 // Paths to the 3 knowledge-base CSV files (relative to data directory)
 const CSV_FILES = [
