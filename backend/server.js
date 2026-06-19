@@ -122,8 +122,8 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
     messages.push({ role, content });
   }
 
-  // gemma2-9b-it: 15,000 TPM free tier (vs llama-3.3-70b at 6,000 TPM)
-  const groqModel = "gemma2-9b-it";
+  // llama-3.3-70b-versatile: proven working model on Groq free tier
+  const groqModel = "llama-3.3-70b-versatile";
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
