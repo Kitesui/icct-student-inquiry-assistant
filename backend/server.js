@@ -122,8 +122,8 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
     messages.push({ role, content });
   }
 
-  // Use Groq model name (ignore the Gemini model name passed in)
-  const groqModel = "llama-3.3-70b-versatile";
+  // gemma2-9b-it: 15,000 TPM free tier (vs llama-3.3-70b at 6,000 TPM)
+  const groqModel = "gemma2-9b-it";
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -131,7 +131,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
         model: groqModel,
         messages,
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 800,
       });
 
       const text = completion.choices[0]?.message?.content ?? "";
