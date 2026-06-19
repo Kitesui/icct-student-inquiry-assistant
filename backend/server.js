@@ -475,9 +475,38 @@ app.post("/api/chat", async (req, res) => {
         });
     }
 
-    const contextText = dbData && dbData.length > 0 
-        ? dbData.map(row => row.content).join('\n\n') 
-        : "";
+    // ── Broad-query supplement: if student asks to LIST ALL something, ────────
+    // vector similarity alone won't retrieve every entry (e.g. "courses available?"
+    // scores high for Certificates but low for Engineering/Criminology entries).
+    // Detect broad listing intent and inject ALL matching KB rows as extra context.
+    const broadListingPatterns = [
+      /\bcourses?\s*(available|offered|offer|you\s*have|list|all)?\b/i,
+      /\bprograms?\s*(available|offered|offer|you\s*have|list|all)?\b/i,
+      /\bwhat\s*(are\s*)?(the\s*)?(available\s*)?(courses?|programs?|degrees?|strands?)\b/i,
+      /\b(list|show|give)\s*(me\s*)?(all\s*)?(the\s*)?(courses?|programs?|degrees?)\b/i,
+      /\bkolehiyo\b|\bkurso\b|\bpwedeng\s*kurso\b/i,
+    ];
+    const isBroadListing = broadListingPatterns.some(p => p.test(message));
+
+    let supplementalContext = "";
+    if (isBroadListing) {
+      // Pull ALL course-related entries from the in-memory knowledge base (loaded from CSV)
+      const courseKeywords = ["course", "program", "degree", "college", "bachelor", "associate", "diploma", "certificate", "strand", "shs", "senior high"];
+      const courseEntries = globalKnowledgeBase.filter(entry => {
+        const text = `${entry.topic || ""} ${entry.context || ""} ${entry.keywords || ""}`.toLowerCase();
+        return courseKeywords.some(kw => text.includes(kw));
+      });
+      if (courseEntries.length > 0) {
+        supplementalContext = "\n\n[COMPLETE COURSE CATALOG FROM KNOWLEDGE BASE]\n" +
+          courseEntries.map(e => e.context || e.topic).join("\n\n");
+        console.log(`📚 Broad listing detected — injecting ${courseEntries.length} full KB course entries as supplemental context.`);
+      }
+    }
+
+    const contextText = (dbData && dbData.length > 0
+        ? dbData.map(row => row.content).join('\n\n')
+        : "") + supplementalContext;
+
 
     // ── Step 3: Feed context to Gemini or activate fallback ──────────────
     if (!dbData || dbData.length === 0) {
