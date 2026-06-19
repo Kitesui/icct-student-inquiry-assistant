@@ -362,23 +362,24 @@ app.get("/api/health", (_req, res) => {
 // ============================================================================
 
 app.post("/api/chat", async (req, res) => {
+  const { studentId, message, history, conversationId } = req.body || {};
+
+  // ── Validate input ──────────────────────────────────────────────────
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({
+      error: "A 'message' string is required in the request body.",
+    });
+  }
+
+  // ── Determine language from request (sent directly by the frontend) ──
+  // The frontend reads the dropdown value and sends it with every chat request.
+  // This is more reliable than a DB column since it doesn't require schema changes.
+  const ALLOWED_LANGUAGES = ['English', 'Filipino', 'Taglish'];
+  const requestedLanguage = req.body?.language;
+  const activeLanguage = ALLOWED_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'English';
+  console.log(`🌐 Language for this request: ${activeLanguage} (from client)`);
+
   try {
-    const { studentId, message, history, conversationId } = req.body;
-
-    // ── Validate input ──────────────────────────────────────────────────
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        error: "A 'message' string is required in the request body.",
-      });
-    }
-
-    // ── Determine language from request (sent directly by the frontend) ──
-    // The frontend reads the dropdown value and sends it with every chat request.
-    // This is more reliable than a DB column since it doesn't require schema changes.
-    const ALLOWED_LANGUAGES = ['English', 'Filipino', 'Taglish'];
-    const requestedLanguage = req.body.language;
-    const activeLanguage = ALLOWED_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'English';
-    console.log(`🌐 Language for this request: ${activeLanguage} (from client)`);
 
     // ── Feature A (Persistent User Logs) ───────────────────────────────
     await supabase.from('chat_logs').insert([{
