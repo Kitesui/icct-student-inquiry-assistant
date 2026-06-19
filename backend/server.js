@@ -2095,6 +2095,18 @@ loadCSVFiles();
 
 console.log(`\n🗄️  Supabase connected → ${supabaseUrl}`);
 
+// Write list of available models to public/models.txt for diagnostics
+ai.models.list()
+  .then(models => {
+    const content = models.map(m => `- Name: ${m.name} | Methods: ${m.supportedGenerationMethods?.join(', ')}`).join('\n');
+    fs.writeFileSync(path.join(__dirname, '../public/models.txt'), content);
+    console.log("  ✓ Wrote available models to public/models.txt");
+  })
+  .catch(err => {
+    console.error("  ❌ Failed to write models to public/models.txt:", err.message);
+  });
+
+
 // Ensure system_settings is configured to use gemini-1.5-flash if it is currently set to a decommissioned/rate-limited model or is empty
 supabase.from('system_settings')
   .select('active_model')
