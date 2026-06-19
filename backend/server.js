@@ -116,22 +116,20 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
     for (const currentModel of uniqueModels) {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
+          console.log(`  🔄 Attempting content generation with model: ${currentModel}...`);
           const result = await ai.models.generateContent({
             model: currentModel,
             config: config,
             contents: contents,
           });
           const text = result.text ?? "";
+          console.log(`  ✅ Content generation succeeded with model: ${currentModel}`);
           return { text };
         } catch (err) {
-          const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
-          const isLimitZero = err.message?.includes("limit: 0") || err.message?.includes("quota exceeded") || err.message?.includes("Quota exceeded");
+          console.warn(`  ⚠️ Gemini model ${currentModel} failed:`, err.message);
           
-          if (isLimitZero) {
-            console.warn(`  ⚠️ Gemini model ${currentModel} is unavailable (limit 0). Trying next model...`);
-            break; // Try next model in list
-          }
-
+          const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
+          
           if (is429 && attempt < maxRetries) {
             let backoff = Math.pow(2, attempt) * 1000;
             const match = err.message?.match(/Please retry in (\d+(?:\.\d+)?)s/i);
@@ -139,18 +137,19 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
               backoff = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
             }
             if (backoff > 5000) {
-              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
-              throw err;
+              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — trying next model.`);
+              break; // Break retry loop and try next model in list
             }
             console.warn(`  ⏳ Rate limited on Gemini generateContent (${currentModel}) — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
             await sleep(backoff);
           } else {
-            throw err;
+            // For any other error (such as 404 Not Found, quota 0, etc.) or if we ran out of retries, try the next model
+            break;
           }
         }
       }
     }
-    throw new Error("All Gemini models failed to generate content.");
+    throw new Error("All Gemini models in the fallback chain failed to generate content.");
   } else {
     // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
     const messages = [];
