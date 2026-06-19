@@ -1678,9 +1678,10 @@
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <label for="ai-model" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Active Generative AI Model</label>
                 <select id="ai-model" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); outline: none;">
-                  <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash (Active)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini-1.5-flash" selected>Gemini 1.5 Flash (Recommended - 1,500 req/day)</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast & Modern)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Advanced Reasoning)</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (Premium Reasoning)</option>
                 </select>
               </div>
 
@@ -2500,7 +2501,22 @@
             // Load model selection and instructions override directly from the database response
             if (settings.active_model) {
               const modelEl = document.getElementById('ai-model');
-              if (modelEl) modelEl.value = settings.active_model;
+              if (modelEl) {
+                let optionExists = false;
+                for (let i = 0; i < modelEl.options.length; i++) {
+                  if (modelEl.options[i].value === settings.active_model) {
+                    optionExists = true;
+                    break;
+                  }
+                }
+                if (!optionExists) {
+                  const opt = document.createElement('option');
+                  opt.value = settings.active_model;
+                  opt.text = settings.active_model + ' (Active)';
+                  modelEl.add(opt);
+                }
+                modelEl.value = settings.active_model;
+              }
             }
             if (settings.system_instruction) {
               const instructionEl = document.getElementById('system-instructions');
@@ -2516,7 +2532,22 @@
 
       if (savedModel && !document.getElementById('ai-model').value) {
         const modelEl = document.getElementById('ai-model');
-        if (modelEl) modelEl.value = savedModel;
+        if (modelEl) {
+          let optionExists = false;
+          for (let i = 0; i < modelEl.options.length; i++) {
+            if (modelEl.options[i].value === savedModel) {
+              optionExists = true;
+              break;
+            }
+          }
+          if (!optionExists) {
+            const opt = document.createElement('option');
+            opt.value = savedModel;
+            opt.text = savedModel + ' (Cached)';
+            modelEl.add(opt);
+          }
+          modelEl.value = savedModel;
+        }
       }
       if (savedInstruction && !document.getElementById('system-instructions').value) {
         const instructionEl = document.getElementById('system-instructions');
