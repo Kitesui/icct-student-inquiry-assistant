@@ -2095,15 +2095,22 @@ loadCSVFiles();
 
 console.log(`\n🗄️  Supabase connected → ${supabaseUrl}`);
 
-// Write list of available models to public/models.txt for diagnostics
 ai.models.list()
-  .then(models => {
-    const content = models.map(m => `- Name: ${m.name} | Methods: ${m.supportedGenerationMethods?.join(', ')}`).join('\n');
-    fs.writeFileSync(path.join(__dirname, '../public/models.txt'), content);
-    console.log("  ✓ Wrote available models to public/models.txt");
+  .then(async (response) => {
+    try {
+      const list = [];
+      for await (const m of response) {
+        list.push(`- Name: ${m.name} | Methods: ${m.supportedGenerationMethods?.join(', ')}`);
+      }
+      const content = list.join('\n');
+      fs.writeFileSync(path.join(__dirname, '../public/models.txt'), content);
+      console.log("  ✓ Wrote available models to public/models.txt");
+    } catch (innerErr) {
+      console.error("  ❌ Error processing models list:", innerErr.message);
+    }
   })
   .catch(err => {
-    console.error("  ❌ Failed to write models to public/models.txt:", err.message);
+    console.error("  ❌ Failed to list models from Gemini API:", err.message);
   });
 
 
