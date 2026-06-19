@@ -84,10 +84,15 @@ async function embedWithRetry(content, maxRetries = 4) {
         if (match) {
           const seconds = parseFloat(match[1]);
           backoff = Math.ceil(seconds * 1000) + 1000;
-          console.warn(`  ⏳ Rate limited on embedding API — sleeping for ${backoff / 1000}s requested by API…`);
-        } else {
-          console.warn(`  ⏳ Rate limited on embedding API — retrying in ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
         }
+
+        // If the backoff is too long (more than 5 seconds), abort and throw the error to prevent gateway timeout
+        if (backoff > 5000) {
+          console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
+          throw err;
+        }
+
+        console.warn(`  ⏳ Rate limited on embedding API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
         await sleep(backoff);
       } else {
         throw err;
@@ -112,10 +117,15 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
         if (match) {
           const seconds = parseFloat(match[1]);
           backoff = Math.ceil(seconds * 1000) + 1000;
-          console.warn(`  ⏳ Rate limited on generateContent API — sleeping for ${backoff / 1000}s requested by API…`);
-        } else {
-          console.warn(`  ⏳ Rate limited on generateContent API — retrying in ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
         }
+
+        // If the backoff is too long (more than 5 seconds), abort and throw the error to prevent gateway timeout
+        if (backoff > 5000) {
+          console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
+          throw err;
+        }
+
+        console.warn(`  ⏳ Rate limited on generateContent API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
         await sleep(backoff);
       } else {
         throw err;
@@ -380,14 +390,7 @@ app.post("/api/chat", async (req, res) => {
 
     // ── Step 1: Compute the incoming message vector ─────────────────────
     const query = message;
-    const embeddingResponse = await ai.models.embedContent({
-        model: "gemini-embedding-001",
-        contents: query,
-        config: { outputDimensionality: 1536 }
-    });
-    
-    // Safely isolate the nested array values array
-    const queryEmbedding = embeddingResponse.embeddings[0].values;
+    const queryEmbedding = await embedWithRetry(query);
     
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1536) {
         console.error("❌ Vector generation failed or length is not 1536!");
@@ -581,6 +584,39 @@ Failure to respond in ${activeLanguage} is a critical error.`;
 
   } catch (err) {
     console.error("❌ /api/chat error:", err);
+
+    // Intercept rate limiting (429 / RESOURCE_EXHAUSTED) errors
+    const isRateLimit = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
+    if (isRateLimit) {
+      console.warn("⚠️ Rate limit error handled — returning ticket fallback.");
+
+      // Language-aware fallback messages for rate limits
+      const RATE_LIMIT_FALLBACKS = {
+        'Filipino': 'Paumanhin, ang AI Assistant ay kasalukuyang nakakaranas ng mataas na dami ng mga tanong at hindi maproseso ang iyong kahilingan sa ngayon. Nais mo bang mag-submit ng isang opisyal na support ticket sa ICCT Administration?',
+        'Taglish': 'Sorry, medyo busy ang AI Assistant right now at hindi maproseso ang iyong request. Gusto mo bang mag-submit ng isang opisyal na support ticket sa ICCT Administration na lang?',
+        'English': 'The Support Assistant is currently experiencing a very high volume of requests. Would you like to submit your inquiry as an official support ticket to the ICCT Administration instead?'
+      };
+
+      const fallbackReply = RATE_LIMIT_FALLBACKS[activeLanguage] || RATE_LIMIT_FALLBACKS['English'];
+
+      try {
+        await supabase.from('chat_logs').insert([{
+          student_id: studentId || "anonymous",
+          sender: 'bot',
+          message_text: fallbackReply,
+          conversation_id: conversationId
+        }]);
+      } catch (logErr) {
+        console.error("⚠️ Failed to log rate-limit fallback to DB:", logErr.message);
+      }
+
+      return res.status(200).json({
+        reply: fallbackReply,
+        offerTicket: true,
+        unresolvedInquiry: message
+      });
+    }
+
     return res.status(500).json({
       error: "Internal server error. Please try again later.",
       details: err.message,
