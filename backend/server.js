@@ -112,6 +112,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
   if (isGemini) {
     const geminiModels = [model, "gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
     const uniqueModels = [...new Set(geminiModels)];
+    const errors = [];
 
     for (const currentModel of uniqueModels) {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -127,6 +128,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
           return { text };
         } catch (err) {
           console.warn(`  ⚠️ Gemini model ${currentModel} failed:`, err.message);
+          errors.push(`${currentModel}: ${err.message}`);
           
           const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
           
@@ -149,7 +151,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
         }
       }
     }
-    throw new Error("All Gemini models in the fallback chain failed to generate content.");
+    throw new Error("All Gemini models in the fallback chain failed: " + errors.join("; "));
   } else {
     // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
     const messages = [];
