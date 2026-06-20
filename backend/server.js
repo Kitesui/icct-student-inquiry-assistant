@@ -107,6 +107,73 @@ async function embedWithRetry(content, maxRetries = 4) {
 }
 
 async function generateContentWithRetry(model, config, contents, maxRetries = 4) {
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      let openRouterModel = "google/gemini-2.5-flash:free";
+      if (model && typeof model === "string") {
+        if (model.includes("/")) {
+          openRouterModel = model;
+        } else if (model.includes("pro")) {
+          openRouterModel = "google/gemini-2.5-pro";
+        } else if (model.includes("llama")) {
+          openRouterModel = "meta-llama/llama-3.3-70b-instruct:free";
+        } else if (model.includes("flash")) {
+          openRouterModel = "google/gemini-2.5-flash:free";
+        }
+      }
+
+      console.log(`  🌐 Routing content generation to OpenRouter (Model: ${openRouterModel})...`);
+
+      const messages = [];
+      if (config?.systemInstruction) {
+        messages.push({ role: "system", content: config.systemInstruction });
+      }
+      for (const turn of contents) {
+        const role = turn.role === "model" ? "assistant" : "user";
+        const content = turn.parts?.map(p => p.text).join("") ?? "";
+        messages.push({ role, content });
+      }
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://icct-student-inquiry-assistant.onrender.com",
+              "X-Title": "ICCT Student Support Assistant"
+            },
+            body: JSON.stringify({
+              model: openRouterModel,
+              messages: messages,
+              temperature: 0.7,
+              max_tokens: 800
+            })
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`OpenRouter HTTP ${response.status}: ${errText}`);
+          }
+
+          const data = await response.json();
+          const text = data.choices[0]?.message?.content ?? "";
+          if (text) {
+            console.log(`  ✅ Content generation succeeded via OpenRouter (${openRouterModel})`);
+            return { text };
+          }
+        } catch (err) {
+          console.warn(`  ⚠️ OpenRouter attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
+          if (attempt === maxRetries) throw err;
+          await sleep(Math.pow(2, attempt) * 1000);
+        }
+      }
+    } catch (openRouterErr) {
+      console.warn("⚠️ OpenRouter failed, falling back to local Google GenAI/Groq. Error:", openRouterErr.message);
+    }
+  }
+
   const isGemini = typeof model === "string" && model.startsWith("gemini");
 
   if (isGemini) {
