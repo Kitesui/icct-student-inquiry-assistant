@@ -572,6 +572,75 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// ── Diagnostic Endpoint ──────────────────────────────────────────────────────
+app.get("/api/test-fallbacks", async (req, res) => {
+  const testMessage = "Hello, this is a test from the diagnostic endpoint.";
+  const testContents = [{ role: "user", parts: [{ text: testMessage }] }];
+  const config = { systemInstruction: "You are a test assistant. Answer with 'TEST_OK'." };
+
+  const results = {
+    env: {
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_KEY: !!process.env.SUPABASE_KEY,
+      GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+      OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
+      GROQ_API_KEY: !!process.env.GROQ_API_KEY,
+    },
+    directGemini: {},
+    openRouter: {},
+    groq: {},
+  };
+
+  // Test direct Gemini
+  try {
+    const text = await callDirectGemini("gemini-2.5-flash", config, testContents, 0);
+    results.directGemini["gemini-2.5-flash"] = { success: true, text };
+  } catch (err) {
+    results.directGemini["gemini-2.5-flash"] = { success: false, error: err.message };
+  }
+
+  try {
+    const text = await callDirectGemini("gemini-3.5-flash", config, testContents, 0);
+    results.directGemini["gemini-3.5-flash"] = { success: true, text };
+  } catch (err) {
+    results.directGemini["gemini-3.5-flash"] = { success: false, error: err.message };
+  }
+
+  // Test OpenRouter models
+  if (process.env.OPENROUTER_API_KEY) {
+    const openRouterModels = [
+      "google/gemini-2.5-flash",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "google/gemma-2-9b-it:free",
+      "openrouter/free"
+    ];
+    for (const model of openRouterModels) {
+      try {
+        const text = await callOpenRouter(model, config, testContents, 0);
+        results.openRouter[model] = { success: true, text };
+      } catch (err) {
+        results.openRouter[model] = { success: false, error: err.message };
+      }
+    }
+  } else {
+    results.openRouter = { error: "No API key" };
+  }
+
+  // Test Groq
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const text = await callGroq("llama-3.3-70b-versatile", config, testContents, 0);
+      results.groq["llama-3.3-70b-versatile"] = { success: true, text };
+    } catch (err) {
+      results.groq["llama-3.3-70b-versatile"] = { success: false, error: err.message };
+    }
+  } else {
+    results.groq = { error: "No API key" };
+  }
+
+  res.json(results);
+});
+
 // ============================================================================
 //  POST /api/chat — Main conversational endpoint
 // ============================================================================
