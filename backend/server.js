@@ -30,7 +30,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const PORT = 5000;
-const MODEL_NAME = "gemini-3.5-flash";
+const MODEL_NAME = "gemini-2.5-flash";
 
 // Paths to the 3 knowledge-base CSV files (relative to data directory)
 const CSV_FILES = [
@@ -268,21 +268,37 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
 
     // 2. Try OpenRouter if API key is present
     if (process.env.OPENROUTER_API_KEY) {
-      try {
-        let openRouterModel = "google/gemini-2.5-flash:free";
-        if (model.includes("pro")) {
-          openRouterModel = "google/gemini-2.5-pro";
-        } else if (model.includes("llama")) {
-          openRouterModel = "meta-llama/llama-3.3-70b-instruct:free";
-        } else if (model.includes("flash")) {
-          openRouterModel = "google/gemini-2.5-flash:free";
-        }
+      let openRouterCandidates = [];
+      if (model.includes("pro")) {
+        openRouterCandidates = [
+          "google/gemini-2.5-pro",
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "openrouter/free"
+        ];
+      } else if (model.includes("llama")) {
+        openRouterCandidates = [
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "openrouter/free"
+        ];
+      } else {
+        // default/flash models
+        openRouterCandidates = [
+          "google/gemini-2.5-flash",
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "google/gemma-2-9b-it:free",
+          "openrouter/free"
+        ];
+      }
 
-        console.log(`  🌐 Falling back to OpenRouter (Model: ${openRouterModel})`);
-        const text = await callOpenRouter(openRouterModel, config, contents, 1);
-        if (text) return { text };
-      } catch (openRouterErr) {
-        errors.push(`OpenRouter: ${openRouterErr.message}`);
+      for (const openRouterModel of openRouterCandidates) {
+        try {
+          console.log(`  🌐 Falling back to OpenRouter (Model: ${openRouterModel})`);
+          const text = await callOpenRouter(openRouterModel, config, contents, 0); // 0 extra retries to move fast
+          if (text) return { text };
+        } catch (openRouterErr) {
+          console.warn(`  ⚠️ OpenRouter model ${openRouterModel} failed: ${openRouterErr.message}`);
+          errors.push(`OpenRouter (${openRouterModel}): ${openRouterErr.message}`);
+        }
       }
     }
 
