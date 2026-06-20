@@ -279,21 +279,22 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
       let openRouterCandidates = [];
       if (model.includes("pro")) {
         openRouterCandidates = [
-          "openrouter/free",
-          "google/gemini-2.5-pro",
-          "meta-llama/llama-3.3-70b-instruct:free"
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "meta-llama/llama-3-8b-instruct:free",
+          "openrouter/free"
         ];
       } else if (model.includes("llama")) {
         openRouterCandidates = [
-          "openrouter/free",
-          "meta-llama/llama-3.3-70b-instruct:free"
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "meta-llama/llama-3-8b-instruct:free",
+          "openrouter/free"
         ];
       } else {
         // default/flash models
         openRouterCandidates = [
-          "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free",
-          "google/gemini-2.5-flash"
+          "meta-llama/llama-3-8b-instruct:free",
+          "openrouter/free"
         ];
       }
 
