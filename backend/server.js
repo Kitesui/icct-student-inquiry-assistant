@@ -46,7 +46,7 @@ function getSystemInstruction(language) {
 CRITICAL HANDLING RULES:
 1. Prioritize the provided context blocks as your absolute source of truth for procedures, policies, names, and contact details.
 2. If a student mentions specific waiting timelines (like '3 days', 'isang linggo') or personal emotional panic that isn't explicitly written in the dry handbook rules, do not panic or return an empty string. Use your natural AI reasoning to calmly map their situation to the closest corresponding handbook procedure (e.g., explaining the standard verification timeline, checking the student ledger, or advising them on who to contact).
-3. If the provided context block completely lacks any relevant topics or procedures matching the user's operational problem, output exactly 'FALLBACK_TRIGGER' so our system can safely offer an official administrative support ticket.
+3. If the user's query asks about external services, general knowledge, or entities outside of ICCT Colleges (such as applying for a government passport, transit fares like LRT/MRT, buying groceries, commercial items, general travel, etc.), or if the provided context block completely lacks the specific procedure or answer matching the user's problem, you MUST output exactly 'FALLBACK_TRIGGER' and nothing else. Do not attempt to answer or make up information.
 
 CRITICAL LISTING RULE:
 When a student asks for ALL available items (e.g., "what courses are available?", "list all programs", "what are the requirements?"), you MUST enumerate EVERY SINGLE item mentioned across ALL provided context blocks — do not stop early, do not summarize with "and more", do not skip any entry. Organize them by group/category if there are multiple types, but include ALL of them. Stopping early or saying "for more info visit campus" before listing everything is NOT acceptable.
@@ -697,10 +697,18 @@ Failure to respond in ${activeLanguage} is a critical error.`;
 
     const customHeader = finalConfig.system_instruction;
     let dynamicSystemInstruction = "";
+
+    const safetyRules = `
+
+CRITICAL SCOPE & FALLBACK RULES:
+1. You are strictly a support assistant for ICCT Colleges. If the user's inquiry asks about external topics, general knowledge, or services provided by external entities/government (such as applying for a government passport, DFA guidelines, public transit tickets/fares like LRT/MRT, buying groceries, commercial items, travel outside of university scope, etc.), you MUST output exactly 'FALLBACK_TRIGGER' and nothing else.
+2. If the provided CONTEXT completely lacks the specific answer or procedure matching the user's operational problem, you MUST output exactly 'FALLBACK_TRIGGER' and nothing else.
+3. Under no circumstances should you answer questions unrelated to ICCT Colleges or make up answers. If you cannot find the answer in the provided CONTEXT, output 'FALLBACK_TRIGGER'.`;
+
     if (customHeader && customHeader.trim().length > 10) {
-      dynamicSystemInstruction = `${languageRule}\n\n${customHeader}`;
+      dynamicSystemInstruction = `${languageRule}\n\n${customHeader}${safetyRules}`;
     } else {
-      dynamicSystemInstruction = `${languageRule}\n\n${getSystemInstruction(activeLanguage)}`;
+      dynamicSystemInstruction = `${languageRule}\n\n${getSystemInstruction(activeLanguage)}${safetyRules}`;
     }
 
     // ── Step 5: Call Gemini via the @google/genai SDK ────────────────────
