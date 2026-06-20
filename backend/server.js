@@ -619,7 +619,10 @@ app.get("/api/test-fallbacks", async (req, res) => {
     const openRouterModels = [
       "google/gemini-2.5-flash",
       "meta-llama/llama-3.3-70b-instruct:free",
-      "google/gemma-2-9b-it:free",
+      "meta-llama/llama-3-8b-instruct:free",
+      "meta-llama/llama-3.1-8b-instruct:free",
+      "qwen/qwen-2.5-72b-instruct:free",
+      "deepseek/deepseek-r1:free",
       "openrouter/free"
     ];
     for (const model of openRouterModels) {
