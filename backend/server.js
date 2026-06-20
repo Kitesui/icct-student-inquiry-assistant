@@ -702,7 +702,7 @@ Failure to respond in ${activeLanguage} is a critical error.`;
 
 CRITICAL SCOPE & FALLBACK RULES:
 1. You are strictly a support assistant for ICCT Colleges. If the user's inquiry asks about external topics, general knowledge, or services provided by external entities/government (such as applying for a government passport, DFA guidelines, public transit tickets/fares like LRT/MRT, buying groceries, commercial items, travel outside of university scope, etc.), you MUST output exactly 'FALLBACK_TRIGGER' and nothing else.
-2. If the provided CONTEXT completely lacks the specific answer or procedure matching the user's operational problem, you MUST output exactly 'FALLBACK_TRIGGER' and nothing else.
+2. The context must contain the actual, complete answer to the student's question. If the context only has a keyword match (for example, the context mentions 'passport' as a required document, but the student asks 'how to get a passport' from the government), or if the context does not contain the steps/answers for the specific query, you MUST output exactly 'FALLBACK_TRIGGER' and nothing else.
 3. Under no circumstances should you answer questions unrelated to ICCT Colleges or make up answers. If you cannot find the answer in the provided CONTEXT, output 'FALLBACK_TRIGGER'.`;
 
     if (customHeader && customHeader.trim().length > 10) {
