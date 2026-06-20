@@ -111,11 +111,17 @@ async function callDirectGemini(model, config, contents, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       console.log(`  🔄 [Google GenAI] Attempt ${attempt + 1}/${maxRetries + 1} with model: ${model}...`);
-      const result = await ai.models.generateContent({
+      
+      const generatePromise = ai.models.generateContent({
         model: model,
         config: config,
         contents: contents,
       });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Gemini API request timed out (>8s)")), 8000)
+      );
+      
+      const result = await Promise.race([generatePromise, timeoutPromise]);
       const text = result.text ?? "";
       if (text) {
         console.log(`  ✅ [Google GenAI] Content generation succeeded (model: ${model})`);
@@ -158,9 +164,9 @@ async function callOpenRouter(openRouterModel, config, contents, maxRetries = 1)
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.warn(`  ⏱️ [OpenRouter] Request timed out (>15s) for model ${openRouterModel}. Aborting...`);
+      console.warn(`  ⏱️ [OpenRouter] Request timed out (>6s) for model ${openRouterModel}. Aborting...`);
       controller.abort();
-    }, 15000); // 15 seconds timeout to protect against Render's 30s timeout
+    }, 6000); // 6 seconds timeout to protect against Render's 30s timeout
 
     try {
       console.log(`  🌐 [OpenRouter] Attempt ${attempt + 1}/${maxRetries + 1} with model: ${openRouterModel}...`);
@@ -223,6 +229,8 @@ async function callGroq(groqModel, config, contents, maxRetries = 2) {
         messages,
         temperature: 0.7,
         max_tokens: 800,
+      }, {
+        timeout: 6000
       });
 
       const text = completion.choices[0]?.message?.content ?? "";
@@ -271,22 +279,21 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
       let openRouterCandidates = [];
       if (model.includes("pro")) {
         openRouterCandidates = [
+          "openrouter/free",
           "google/gemini-2.5-pro",
-          "meta-llama/llama-3.3-70b-instruct:free",
-          "openrouter/free"
+          "meta-llama/llama-3.3-70b-instruct:free"
         ];
       } else if (model.includes("llama")) {
         openRouterCandidates = [
-          "meta-llama/llama-3.3-70b-instruct:free",
-          "openrouter/free"
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
         ];
       } else {
         // default/flash models
         openRouterCandidates = [
-          "google/gemini-2.5-flash",
+          "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free",
-          "google/gemma-2-9b-it:free",
-          "openrouter/free"
+          "google/gemini-2.5-flash"
         ];
       }
 
