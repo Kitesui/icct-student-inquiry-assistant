@@ -608,6 +608,20 @@ app.get("/api/test-fallbacks", async (req, res) => {
   }
 
   try {
+    const text = await callDirectGemini("gemini-2.0-flash", config, testContents, 0);
+    results.directGemini["gemini-2.0-flash"] = { success: true, text };
+  } catch (err) {
+    results.directGemini["gemini-2.0-flash"] = { success: false, error: err.message };
+  }
+
+  try {
+    const text = await callDirectGemini("gemini-1.5-flash", config, testContents, 0);
+    results.directGemini["gemini-1.5-flash"] = { success: true, text };
+  } catch (err) {
+    results.directGemini["gemini-1.5-flash"] = { success: false, error: err.message };
+  }
+
+  try {
     const text = await callDirectGemini("gemini-3.5-flash", config, testContents, 0);
     results.directGemini["gemini-3.5-flash"] = { success: true, text };
   } catch (err) {
