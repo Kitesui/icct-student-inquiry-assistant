@@ -106,189 +106,228 @@ async function embedWithRetry(content, maxRetries = 4) {
   }
 }
 
-async function generateContentWithRetry(model, config, contents, maxRetries = 4) {
-  if (process.env.OPENROUTER_API_KEY) {
+async function callDirectGemini(model, config, contents, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      let openRouterModel = "google/gemini-2.5-flash:free";
-      if (model && typeof model === "string") {
-        if (model.includes("/")) {
-          openRouterModel = model;
-        } else if (model.includes("pro")) {
+      console.log(`  🔄 [Google GenAI] Attempt ${attempt + 1}/${maxRetries + 1} with model: ${model}...`);
+      const result = await ai.models.generateContent({
+        model: model,
+        config: config,
+        contents: contents,
+      });
+      const text = result.text ?? "";
+      if (text) {
+        console.log(`  ✅ [Google GenAI] Content generation succeeded (model: ${model})`);
+        return text;
+      }
+    } catch (err) {
+      console.warn(`  ⚠️ [Google GenAI] Attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
+      const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
+      if (is429 && attempt < maxRetries) {
+        let backoff = Math.pow(2, attempt) * 1000;
+        const match = err.message?.match(/Please retry in (\d+(?:\.\d+)?)s/i);
+        if (match) {
+          backoff = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
+        }
+        if (backoff > 5000) {
+          console.warn(`  ⏳ [Google GenAI] Rate limit backoff too long (${backoff / 1000}s) — trying next fallback.`);
+          throw err;
+        }
+        console.log(`  ⏳ [Google GenAI] Sleeping for ${backoff / 1000}s due to rate limit...`);
+        await sleep(backoff);
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error(`Google GenAI model ${model} failed after retries.`);
+}
+
+async function callOpenRouter(openRouterModel, config, contents, maxRetries = 1) {
+  const messages = [];
+  if (config?.systemInstruction) {
+    messages.push({ role: "system", content: config.systemInstruction });
+  }
+  for (const turn of contents) {
+    const role = turn.role === "model" ? "assistant" : "user";
+    const content = turn.parts?.map(p => p.text).join("") ?? "";
+    messages.push({ role, content });
+  }
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn(`  ⏱️ [OpenRouter] Request timed out (>15s) for model ${openRouterModel}. Aborting...`);
+      controller.abort();
+    }, 15000); // 15 seconds timeout to protect against Render's 30s timeout
+
+    try {
+      console.log(`  🌐 [OpenRouter] Attempt ${attempt + 1}/${maxRetries + 1} with model: ${openRouterModel}...`);
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://icct-student-inquiry-assistant.onrender.com",
+          "X-Title": "ICCT Student Support Assistant"
+        },
+        body: JSON.stringify({
+          model: openRouterModel,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 800
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter HTTP ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices[0]?.message?.content ?? "";
+      if (text) {
+        console.log(`  ✅ [OpenRouter] Content generation succeeded (model: ${openRouterModel})`);
+        return text;
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn(`  ⚠️ [OpenRouter] Attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
+      if (attempt === maxRetries) throw err;
+      await sleep(Math.pow(2, attempt) * 1000);
+    }
+  }
+  throw new Error(`OpenRouter model ${openRouterModel} failed after retries.`);
+}
+
+async function callGroq(groqModel, config, contents, maxRetries = 2) {
+  const messages = [];
+  if (config?.systemInstruction) {
+    messages.push({ role: "system", content: config.systemInstruction });
+  }
+  for (const turn of contents) {
+    const role = turn.role === "model" ? "assistant" : "user";
+    const content = turn.parts?.map(p => p.text).join("") ?? "";
+    messages.push({ role, content });
+  }
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`  ⚡ [Groq] Attempt ${attempt + 1}/${maxRetries + 1} with model: ${groqModel}...`);
+      const completion = await groq.chat.completions.create({
+        model: groqModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 800,
+      });
+
+      const text = completion.choices[0]?.message?.content ?? "";
+      if (text) {
+        console.log(`  ✅ [Groq] Content generation succeeded (model: ${groqModel})`);
+        return text;
+      }
+    } catch (err) {
+      console.warn(`  ⚠️ [Groq] Attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
+      const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate_limit");
+      if (is429 && attempt < maxRetries) {
+        let backoff = Math.pow(2, attempt) * 1000;
+        const match = err.message?.match(/try again in ([\d.]+)s/i);
+        if (match) {
+          backoff = Math.ceil(parseFloat(match[1]) * 1000) + 500;
+        }
+        if (backoff > 5000) {
+          console.warn(`  ⏳ [Groq] Rate limit backoff too long (${backoff / 1000}s) — trying next fallback.`);
+          throw err;
+        }
+        console.log(`  ⏳ [Groq] Sleeping for ${backoff / 1000}s due to rate limit...`);
+        await sleep(backoff);
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error(`Groq model ${groqModel} failed after retries.`);
+}
+
+async function generateContentWithRetry(model, config, contents, maxRetries = 4) {
+  const errors = [];
+  const isGemini = typeof model === "string" && model.startsWith("gemini");
+
+  if (isGemini) {
+    // 1. Try Direct Google GenAI API first (snappy response, 1-2s)
+    try {
+      const text = await callDirectGemini(model, config, contents, 2);
+      if (text) return { text };
+    } catch (directErr) {
+      errors.push(`Direct Google GenAI (${model}): ${directErr.message}`);
+    }
+
+    // 2. Try OpenRouter if API key is present
+    if (process.env.OPENROUTER_API_KEY) {
+      try {
+        let openRouterModel = "google/gemini-2.5-flash:free";
+        if (model.includes("pro")) {
           openRouterModel = "google/gemini-2.5-pro";
         } else if (model.includes("llama")) {
           openRouterModel = "meta-llama/llama-3.3-70b-instruct:free";
         } else if (model.includes("flash")) {
           openRouterModel = "google/gemini-2.5-flash:free";
         }
-      }
 
-      console.log(`  🌐 Routing content generation to OpenRouter (Model: ${openRouterModel})...`);
-
-      const messages = [];
-      if (config?.systemInstruction) {
-        messages.push({ role: "system", content: config.systemInstruction });
-      }
-      for (const turn of contents) {
-        const role = turn.role === "model" ? "assistant" : "user";
-        const content = turn.parts?.map(p => p.text).join("") ?? "";
-        messages.push({ role, content });
-      }
-
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": "https://icct-student-inquiry-assistant.onrender.com",
-              "X-Title": "ICCT Student Support Assistant"
-            },
-            body: JSON.stringify({
-              model: openRouterModel,
-              messages: messages,
-              temperature: 0.7,
-              max_tokens: 800
-            })
-          });
-
-          if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`OpenRouter HTTP ${response.status}: ${errText}`);
-          }
-
-          const data = await response.json();
-          const text = data.choices[0]?.message?.content ?? "";
-          if (text) {
-            console.log(`  ✅ Content generation succeeded via OpenRouter (${openRouterModel})`);
-            return { text };
-          }
-        } catch (err) {
-          console.warn(`  ⚠️ OpenRouter attempt ${attempt + 1}/${maxRetries + 1} failed:`, err.message);
-          if (attempt === maxRetries) throw err;
-          await sleep(Math.pow(2, attempt) * 1000);
-        }
-      }
-    } catch (openRouterErr) {
-      console.warn("⚠️ OpenRouter failed, falling back to local Google GenAI/Groq. Error:", openRouterErr.message);
-    }
-  }
-
-  const isGemini = typeof model === "string" && model.startsWith("gemini");
-
-  if (isGemini) {
-    const geminiModels = [model, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
-    const uniqueModels = [...new Set(geminiModels)];
-    const errors = [];
-
-    for (const currentModel of uniqueModels) {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          console.log(`  🔄 Attempting content generation with model: ${currentModel}...`);
-          const result = await ai.models.generateContent({
-            model: currentModel,
-            config: config,
-            contents: contents,
-          });
-          const text = result.text ?? "";
-          console.log(`  ✅ Content generation succeeded with model: ${currentModel}`);
-          return { text };
-        } catch (err) {
-          console.warn(`  ⚠️ Gemini model ${currentModel} failed:`, err.message);
-          errors.push(`${currentModel}: ${err.message}`);
-          
-          const is429 = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
-          
-          if (is429 && attempt < maxRetries) {
-            let backoff = Math.pow(2, attempt) * 1000;
-            const match = err.message?.match(/Please retry in (\d+(?:\.\d+)?)s/i);
-            if (match) {
-              backoff = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
-            }
-            if (backoff > 5000) {
-              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — trying next model.`);
-              break; // Break retry loop and try next model in list
-            }
-            console.warn(`  ⏳ Rate limited on Gemini generateContent (${currentModel}) — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
-            await sleep(backoff);
-          } else {
-            // For any other error (such as 404 Not Found, quota 0, etc.) or if we ran out of retries, try the next model
-            break;
-          }
-        }
+        console.log(`  🌐 Falling back to OpenRouter (Model: ${openRouterModel})`);
+        const text = await callOpenRouter(openRouterModel, config, contents, 1);
+        if (text) return { text };
+      } catch (openRouterErr) {
+        errors.push(`OpenRouter: ${openRouterErr.message}`);
       }
     }
-    throw new Error("All Gemini models in the fallback chain failed: " + errors.join("; "));
+
+    // 3. Try Groq (Llama-3.3-70b-versatile) as a super-fast fallback
+    if (process.env.GROQ_API_KEY) {
+      try {
+        console.log(`  ⚡ Falling back to Groq (Model: llama-3.3-70b-versatile)`);
+        const text = await callGroq("llama-3.3-70b-versatile", config, contents, 2);
+        if (text) return { text };
+      } catch (groqErr) {
+        errors.push(`Groq fallback: ${groqErr.message}`);
+      }
+    }
+
+    // 4. Try other Gemini models in the local fallback chain as a last resort
+    const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"].filter(m => m !== model);
+    for (const currentModel of fallbackModels) {
+      try {
+        const text = await callDirectGemini(currentModel, config, contents, 1);
+        if (text) return { text };
+      } catch (fallbackErr) {
+        errors.push(`Fallback Google GenAI (${currentModel}): ${fallbackErr.message}`);
+      }
+    }
+
+    throw new Error("All generative AI engines (Direct Google GenAI, OpenRouter, Groq, and Fallback Gemini) failed:\n" + errors.join("\n"));
   } else {
-    // ── Convert Gemini-style contents array to Groq/OpenAI messages format ──
-    const messages = [];
-
-    // Add system instruction if provided
-    if (config?.systemInstruction) {
-      messages.push({ role: "system", content: config.systemInstruction });
-    }
-
-    // Convert Gemini turns { role, parts: [{ text }] } → { role, content }
-    for (const turn of contents) {
-      const role = turn.role === "model" ? "assistant" : "user";
-      const content = turn.parts?.map(p => p.text).join("") ?? "";
-      messages.push({ role, content });
-    }
-
-    // llama-3.3-70b-versatile: proven working model on Groq free tier
-    const groqModel = "llama-3.3-70b-versatile";
-
+    // If the model name is configured directly to a non-Gemini model (e.g. Groq/Llama)
     try {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const completion = await groq.chat.completions.create({
-            model: groqModel,
-            messages,
-            temperature: 0.7,
-            max_tokens: 800,
-          });
-
-          const text = completion.choices[0]?.message?.content ?? "";
-          return { text };
-        } catch (err) {
-          const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate_limit");
-          if (is429 && attempt < maxRetries) {
-            let backoff = Math.pow(2, attempt) * 1000;
-            const match = err.message?.match(/try again in ([\d.]+)s/i);
-            if (match) {
-              backoff = Math.ceil(parseFloat(match[1]) * 1000) + 500;
-            }
-            if (backoff > 5000) {
-              console.warn(`  ⏳ Rate limit backoff is too long (${backoff / 1000}s) — aborting retry.`);
-              throw err;
-            }
-            console.warn(`  ⏳ Rate limited on Groq API — sleeping for ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})…`);
-            await sleep(backoff);
-          } else {
-            throw err;
-          }
-        }
-      }
+      const groqModel = model || "llama-3.3-70b-versatile";
+      const text = await callGroq(groqModel, config, contents, maxRetries);
+      if (text) return { text };
     } catch (groqErr) {
-      console.warn("⚠️ Groq text generation failed, falling back to Gemini models list. Error:", groqErr.message);
+      errors.push(`Direct Groq (${model}): ${groqErr.message}`);
       
-      const fallbackModels = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+      // Fallback to Gemini models if Groq fails
+      const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
       for (const fallbackModel of fallbackModels) {
         try {
-          console.log(`  🔄 Trying fallback model: ${fallbackModel}...`);
-          const result = await ai.models.generateContent({
-            model: fallbackModel,
-            config: config,
-            contents: contents,
-          });
-          const text = result.text ?? "";
-          console.log(`  ✅ Fallback model ${fallbackModel} succeeded.`);
-          return { text };
+          const text = await callDirectGemini(fallbackModel, config, contents, 1);
+          if (text) return { text };
         } catch (geminiErr) {
-          console.warn(`  ❌ Fallback model ${fallbackModel} failed:`, geminiErr.message);
+          errors.push(`Fallback Google GenAI (${fallbackModel}): ${geminiErr.message}`);
         }
       }
-      throw groqErr; // rethrow the original Groq error to invoke the standard ticket fallback
+      throw new Error("Direct Groq failed and fallback Gemini models also failed:\n" + errors.join("\n"));
     }
   }
 }
