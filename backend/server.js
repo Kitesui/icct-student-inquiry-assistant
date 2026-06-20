@@ -776,7 +776,7 @@ CRITICAL SCOPE & FALLBACK RULES:
     // Intercept rate limiting (429 / RESOURCE_EXHAUSTED) errors
     const isRateLimit = err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED") || err.status === 429;
     if (isRateLimit) {
-      console.warn("⚠️ Rate limit error handled — returning ticket fallback.");
+      console.warn("⚠️ Rate limit error handled — returning ticket fallback. Error:", err.message);
 
       // Language-aware fallback messages for rate limits
       const RATE_LIMIT_FALLBACKS = {
@@ -801,7 +801,8 @@ CRITICAL SCOPE & FALLBACK RULES:
       return res.status(200).json({
         reply: fallbackReply,
         offerTicket: true,
-        unresolvedInquiry: message
+        unresolvedInquiry: message,
+        debugError: err.message
       });
     }
 
