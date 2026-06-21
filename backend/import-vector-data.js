@@ -218,8 +218,8 @@ async function main() {
       errorCount++;
     }
 
-    // Pace requests to stay under Gemini free-tier rate limits
-    if (i < rows.length - 1) await sleep(1500);
+    // Pace requests to stay under Gemini Pay-As-You-Go tier rate limits (100ms sleep allows ~600 RPM)
+    if (i < rows.length - 1) await sleep(100);
   }
 
   // ── Summary ───────────────────────────────────────────────────────────
