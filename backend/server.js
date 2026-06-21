@@ -865,7 +865,8 @@ app.post("/api/chat", async (req, res) => {
     // For broad queries, the supplemental context IS the answer — skip unrelated vector
     // results (which score ~0.24 and are mostly irrelevant for listing questions).
     // For specific queries, use vector results only (no supplemental).
-    const useSupplementalOnly = supplementalParts.length > 0;
+    const hasSpecificDocument = /\b(prospectus|sog|clearance|grades?|diploma|tor|card|id|uniform|lace|books?|receipt|ledger)\b/i.test(message);
+    const useSupplementalOnly = supplementalParts.length > 0 && !hasSpecificDocument;
     const contextText = useSupplementalOnly
         ? supplementalContext.trim()
         : (dbData && dbData.length > 0 ? dbData.map(row => row.content).join('\n\n') : "");
