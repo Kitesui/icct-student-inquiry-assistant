@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    // Enforce admin authentication immediately to prevent flashing dashboard contents
+    if (!sessionStorage.getItem("admin_token")) {
+      window.location.replace("/?login=admin");
+    }
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ICCT Administrative Console — Inquiry Analytics & Ticket Management</title>
@@ -1603,15 +1609,9 @@
                   <label for="kb-category">Category <span class="required-dot">*</span></label>
                   <select id="kb-category" class="form-select" required>
                     <option value="" disabled selected>Select a category…</option>
-                    <option value="Enrollment">Enrollment</option>
-                    <option value="Academic Policies">Academic Policies</option>
-                    <option value="Accounting">Accounting</option>
+                    <option value="General Academic Policies">General Academic Policies</option>
                     <option value="Admission">Admission</option>
                     <option value="Course Offering">Course Offering</option>
-                    <option value="Student Affairs">Student Affairs</option>
-                    <option value="Scholarships">Scholarships</option>
-                    <option value="Graduation">Graduation</option>
-                    <option value="General Information">General Information</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -1678,9 +1678,8 @@
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <label for="ai-model" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Active Generative AI Model</label>
                 <select id="ai-model" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; background: var(--bg-page); color: var(--text-primary); outline: none;">
-                  <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash (Recommended - 1,500 req/day)</option>
+                  <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash (Recommended)</option>
                   <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast & Modern)</option>
-                  <option value="gemini-2.0-flash">Gemini 2.0 Flash (Lite)</option>
                   <option value="gemini-2.5-pro">Gemini 2.5 Pro (Premium Reasoning)</option>
                 </select>
               </div>
@@ -1727,6 +1726,16 @@
         : window.location.origin;
     const API_BASE = API_BASE_URL;
 
+    // Helper to perform authenticated administrative API requests
+    async function fetchAdmin(url, options = {}) {
+      const token = sessionStorage.getItem("admin_token");
+      const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      };
+      return fetch(url, { ...options, headers });
+    }
+
     // Global references for chart instances to dynamically update them
     let categoriesChartInstance = null;
     let statusChartInstance = null;
@@ -1766,7 +1775,7 @@
     // Pull calculations metrics & populate dashboard cards/charts
     async function syncDashboardData() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/stats`);
+        const response = await fetchAdmin(`${API_BASE_URL}/api/admin/stats`);
         if (!response.ok) {
           throw new Error(`Analytics server responded with HTTP status ${response.status}`);
         }
@@ -1933,7 +1942,7 @@
     // Pull support tickets list and write layout rows down table grid
     async function fetchTickets() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/tickets`);
+        const response = await fetchAdmin(`${API_BASE_URL}/api/admin/tickets`);
         if (!response.ok) {
           throw new Error(`Tickets server responded with HTTP status ${response.status}`);
         }
@@ -2117,7 +2126,7 @@
       const adminReplyText = replyBox ? replyBox.value.trim() : '';
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/tickets/${id}`, {
+        const response = await fetchAdmin(`${API_BASE_URL}/api/admin/tickets/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -2237,7 +2246,7 @@
       `;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/knowledge`, {
+        const response = await fetchAdmin(`${API_BASE_URL}/api/admin/knowledge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ category, title, content })
@@ -2317,7 +2326,7 @@
       const countBadge = document.getElementById('kb-record-count');
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/knowledge`);
+        const response = await fetchAdmin(`${API_BASE_URL}/api/admin/knowledge`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const records = await response.json();
@@ -2485,7 +2494,7 @@
     // Initialize Dashboard
     document.addEventListener('DOMContentLoaded', () => {
       // Load configurations from backend database API
-      fetch(`${API_BASE_URL}/api/admin/settings`)
+      fetchAdmin(`${API_BASE_URL}/api/admin/settings`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.settings) {
@@ -2570,7 +2579,7 @@
           localStorage.setItem('admin_instruction', instructionValue);
           
           try {
-            const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+            const res = await fetchAdmin(`${API_BASE_URL}/api/admin/settings`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -2625,7 +2634,7 @@
         confirmBtn.innerHTML = 'Deleting…';
 
         try {
-          const response = await fetch(`${API_BASE_URL}/api/admin/knowledge/${deleteTargetId}`, {
+          const response = await fetchAdmin(`${API_BASE_URL}/api/admin/knowledge/${deleteTargetId}`, {
             method: 'DELETE'
           });
 
@@ -2699,7 +2708,7 @@
 
         try {
           // Gathers edited values and runs update call to Supabase (via PUT endpoint wrapper)
-          const response = await fetch(`${API_BASE_URL}/api/admin/knowledge/${id}`, {
+          const response = await fetchAdmin(`${API_BASE_URL}/api/admin/knowledge/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json'
@@ -2713,7 +2722,7 @@
             showToast('Handbook policy updated successfully!');
             
             // Trigger background call to server re-vectorization route so the Gemini AI brain stays synced
-            fetch(`${API_BASE_URL}/api/admin/knowledge/${id}/revectorize`, { method: 'POST' })
+            fetchAdmin(`${API_BASE_URL}/api/admin/knowledge/${id}/revectorize`, { method: 'POST' })
               .then(res => res.json())
               .then(vectorData => {
                 if (vectorData.success) {
@@ -2812,8 +2821,6 @@
             <option value="General Academic Policies">General Academic Policies</option>
             <option value="Admission">Admission</option>
             <option value="Course Offering">Course Offering</option>
-            <option value="Scheduling">Scheduling</option>
-            <option value="Student Services">Student Services</option>
           </select>
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px;">

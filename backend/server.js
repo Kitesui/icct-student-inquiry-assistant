@@ -327,7 +327,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
     }
 
     // 4. Try other Gemini models in the local fallback chain as a last resort
-    const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"].filter(m => m !== model);
+    const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash"].filter(m => m !== model);
     for (const currentModel of fallbackModels) {
       try {
         const text = await callDirectGemini(currentModel, config, contents, 1);
@@ -348,7 +348,7 @@ async function generateContentWithRetry(model, config, contents, maxRetries = 4)
       errors.push(`Direct Groq (${model}): ${groqErr.message}`);
       
       // Fallback to Gemini models if Groq fails
-      const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+      const fallbackModels = ["gemini-3.5-flash", "gemini-2.5-flash"];
       for (const fallbackModel of fallbackModels) {
         try {
           const text = await callDirectGemini(fallbackModel, config, contents, 1);
@@ -567,6 +567,35 @@ app.use(express.json());             // Parse incoming JSON bodies
 // Serve static assets from our public directory securely
 app.use(express.static(path.join(__dirname, '../public')));
 
+// ── Middleware: Enforce Administrator Authentication ───────────────────────
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    console.warn(`⚠️ Access Denied — missing Authorization header on route: ${req.path}`);
+    return res.status(401).json({ error: "Access denied. Administrator session token is required." });
+  }
+
+  const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+  const envKey = process.env.ADMIN_MASTER_KEY;
+  const defaultKey = "admin123";
+
+  // If env key is set, ONLY match against it. If not set, log warning and use default.
+  if (envKey) {
+    if (token !== envKey) {
+      console.warn("⚠️ Access Denied — invalid administrator session token.");
+      return res.status(401).json({ error: "Access denied. Invalid session token." });
+    }
+  } else {
+    console.warn("⚠️ WARNING: ADMIN_MASTER_KEY environment variable is not defined. Falling back to default key.");
+    if (token !== defaultKey) {
+      console.warn("⚠️ Access Denied — invalid default administrator token.");
+      return res.status(401).json({ error: "Access denied. Invalid default session token." });
+    }
+  }
+
+  next();
+}
+
 // ── HTML delivery endpoints ───────────────────────────────────────────────
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
@@ -586,7 +615,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 // ── Diagnostic Endpoint ──────────────────────────────────────────────────────
-app.get("/api/test-fallbacks", async (req, res) => {
+app.get("/api/test-fallbacks", requireAdmin, async (req, res) => {
   const testMessage = "Hello, this is a test from the diagnostic endpoint.";
   const testContents = [{ role: "user", parts: [{ text: testMessage }] }];
   const config = { systemInstruction: "You are a test assistant. Answer with 'TEST_OK'." };
@@ -612,19 +641,7 @@ app.get("/api/test-fallbacks", async (req, res) => {
     results.directGemini["gemini-2.5-flash"] = { success: false, error: err.message };
   }
 
-  try {
-    const text = await callDirectGemini("gemini-2.0-flash", config, testContents, 0);
-    results.directGemini["gemini-2.0-flash"] = { success: true, text };
-  } catch (err) {
-    results.directGemini["gemini-2.0-flash"] = { success: false, error: err.message };
-  }
-
-  try {
-    const text = await callDirectGemini("gemini-1.5-flash", config, testContents, 0);
-    results.directGemini["gemini-1.5-flash"] = { success: true, text };
-  } catch (err) {
-    results.directGemini["gemini-1.5-flash"] = { success: false, error: err.message };
-  }
+  // (gemini-2.0-flash and gemini-1.5-flash tests removed as they are deprecated)
 
   try {
     const text = await callDirectGemini("gemini-3.5-flash", config, testContents, 0);
@@ -957,9 +974,12 @@ CRITICAL SCOPE & FALLBACK RULES:
     if (cleanAiText.includes("FALLBACK_TRIGGER")) {
       console.log("⚠️  Fallback triggered — prompting for support ticket.");
 
-      const fallbackReply =
-        "I couldn't find an answer to your question in our university knowledge base. " +
-        "Would you like to submit this as an official support ticket to the ICCT Administration?";
+      const FALLBACK_MESSAGES = {
+        'Filipino':  'Hindi ko mahanap ang sagot sa iyong tanong sa aming knowledge base ng unibersidad. Gusto mo bang mag-submit ng opisyal na support ticket sa ICCT Administration?',
+        'Taglish':   "Sorry, hindi ko na-find ang sagot sa iyong tanong sa aming university knowledge base. Gusto mo bang mag-submit ng isang opisyal na support ticket sa ICCT Administration?",
+        'English':   "I couldn't find an answer to your question in our university knowledge base. Would you like to submit this as an official support ticket to the ICCT Administration?"
+      };
+      const fallbackReply = FALLBACK_MESSAGES[activeLanguage] || FALLBACK_MESSAGES['English'];
 
       // Log the bot fallback reply to chat_logs
       await supabase.from('chat_logs').insert([{
@@ -1092,7 +1112,8 @@ app.post("/api/auth/signin", async (req, res) => {
         return res.json({
           success: true,
           message: "Admin access verified!",
-          role: "admin"
+          role: "admin",
+          token: process.env.ADMIN_MASTER_KEY || "admin123"
         });
 
       } catch (err) {
@@ -1146,12 +1167,14 @@ app.post("/api/auth/signin", async (req, res) => {
 
     if (isMatch) {
       console.log(`✅ Student logged in: ${studentId}`);
+      const clientProfile = { ...profile };
+      delete clientProfile.password;
       return res.json({
         success: true,
         isNewUser: false,
         message: "Student login successful!",
         role: "student",
-        profile: profile,
+        profile: clientProfile,
       });
     } else {
       console.log(`⚠️ Login denied for Student ID: ${studentId}`);
@@ -1183,6 +1206,14 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "All registration fields (ID, email, full name, course, year level, password) are required.",
+      });
+    }
+
+    if (studentId.toUpperCase().startsWith('ADM')) {
+      console.warn(`⚠️ Registration blocked — student ID prefix 'ADM' is reserved: ${studentId}`);
+      return res.status(400).json({
+        success: false,
+        error: "Student IDs starting with 'ADM' are reserved for administrative accounts.",
       });
     }
 
@@ -1241,10 +1272,12 @@ app.post("/api/auth/signup", async (req, res) => {
       .single();
 
     console.log(`✅ New student registered successfully: ${studentId}`);
+    const clientProfile = profile ? { ...profile } : { student_id: studentId, email, course, year_level: yearLevel };
+    delete clientProfile.password;
     return res.json({
       success: true,
       message: "Student registration successful!",
-      profile: profile || { student_id: studentId, email, course, year_level: yearLevel }
+      profile: clientProfile
     });
 
   } catch (err) {
@@ -1624,7 +1657,7 @@ app.post("/api/tickets/submit", async (req, res) => {
 // ============================================================================
 //  GET /api/admin/settings — Retrieve Admin configurations from Supabase
 // ============================================================================
-app.get('/api/admin/settings', async (req, res) => {
+app.get('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
     // Read local backup if it exists (check /tmp as fallback for Render cloud)
     let backupData = {};
@@ -1667,7 +1700,7 @@ app.get('/api/admin/settings', async (req, res) => {
 // ============================================================================
 //  POST /api/admin/settings — Save Admin configurations to Supabase
 // ============================================================================
-app.post('/api/admin/settings', async (req, res) => {
+app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   const { vector_threshold, max_tickets, active_model, system_instruction } = req.body;
   try {
     // Save locally to server first as a reliable backup.
@@ -1720,7 +1753,7 @@ app.post('/api/admin/settings', async (req, res) => {
 // ============================================================================
 //  GET /api/admin/analytics — System Metrics & Chart Aggregation
 // ============================================================================
-app.get("/api/admin/analytics", async (req, res) => {
+app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
   try {
     // 1. Fetch chat logs to determine total inquiries and categorize them
     const { data: chatLogs, error: logsError } = await supabase
@@ -1804,7 +1837,7 @@ app.get("/api/admin/analytics", async (req, res) => {
 // ============================================================================
 //  GET /api/admin/stats — Live Administrative Statistics
 // ============================================================================
-app.get("/api/admin/stats", async (req, res) => {
+app.get("/api/admin/stats", requireAdmin, async (req, res) => {
   try {
     // 1. QUERY LIVE TICKET COUNTS
     const { data: tickets, error: ticketsError } = await supabase
@@ -1959,7 +1992,7 @@ app.get("/api/admin/stats", async (req, res) => {
 // ============================================================================
 //  GET /api/admin/tickets — Global Tickets Fetch (Pending first)
 // ============================================================================
-app.get("/api/admin/tickets", async (req, res) => {
+app.get("/api/admin/tickets", requireAdmin, async (req, res) => {
   try {
     const { data: tickets, error } = await supabase
       .from("tickets")
@@ -2016,7 +2049,7 @@ app.get("/api/admin/tickets", async (req, res) => {
 // ============================================================================
 //  POST/PUT /api/admin/tickets/resolve — Resolve a Ticket
 // ============================================================================
-app.post("/api/admin/tickets/resolve", async (req, res) => {
+app.post("/api/admin/tickets/resolve", requireAdmin, async (req, res) => {
   try {
     const { ticketId } = req.body;
     if (!ticketId) {
@@ -2049,7 +2082,7 @@ app.post("/api/admin/tickets/resolve", async (req, res) => {
 // ============================================================================
 //  PUT /api/admin/tickets/:id — Resolve a Ticket with Admin Reply
 // ============================================================================
-app.put("/api/admin/tickets/:id", async (req, res) => {
+app.put("/api/admin/tickets/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, admin_reply } = req.body;
@@ -2092,12 +2125,24 @@ app.post("/api/auth/admin-login", (req, res) => {
       return res.status(400).json({ error: "Master key is required in request body." });
     }
 
-    const defaultKey = "admin123";
     const envKey = process.env.ADMIN_MASTER_KEY;
+    const defaultKey = "admin123";
 
-    if (masterKey === defaultKey || (envKey && masterKey === envKey)) {
+    let isValid = false;
+    if (envKey) {
+      isValid = (masterKey === envKey);
+    } else {
+      console.warn("⚠️ WARNING: ADMIN_MASTER_KEY is not defined. Using default key.");
+      isValid = (masterKey === defaultKey);
+    }
+
+    if (isValid) {
       console.log("🔒 Admin login successful.");
-      return res.json({ success: true, message: "Admin authenticated successfully." });
+      return res.json({ 
+        success: true, 
+        message: "Admin authenticated successfully.",
+        token: envKey || defaultKey
+      });
     } else {
       console.log("⚠️ Admin login failed — invalid master key.");
       return res.status(401).json({ error: "Invalid administrative master access key." });
@@ -2111,7 +2156,7 @@ app.post("/api/auth/admin-login", (req, res) => {
 // ============================================================================
 //  POST /api/admin/knowledge — Add New Knowledge Base Entry
 // ============================================================================
-app.post("/api/admin/knowledge", async (req, res) => {
+app.post("/api/admin/knowledge", requireAdmin, async (req, res) => {
   try {
     const { category, title, content } = req.body;
 
@@ -2167,7 +2212,7 @@ app.post("/api/admin/knowledge", async (req, res) => {
 // ============================================================================
 //  GET /api/admin/knowledge — List All Knowledge Base Entries
 // ============================================================================
-app.get("/api/admin/knowledge", async (req, res) => {
+app.get("/api/admin/knowledge", requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("school_knowledge")
@@ -2190,7 +2235,7 @@ app.get("/api/admin/knowledge", async (req, res) => {
 // ============================================================================
 //  DELETE /api/admin/knowledge/:id — Remove Knowledge Base Entry
 // ============================================================================
-app.delete("/api/admin/knowledge/:id", async (req, res) => {
+app.delete("/api/admin/knowledge/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2229,7 +2274,7 @@ app.delete("/api/admin/knowledge/:id", async (req, res) => {
 // ============================================================================
 //  PUT /api/admin/knowledge/:id — Update Knowledge Base Entry metadata
 // ============================================================================
-app.put("/api/admin/knowledge/:id", async (req, res) => {
+app.put("/api/admin/knowledge/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { category, title, content } = req.body;
@@ -2268,7 +2313,7 @@ app.put("/api/admin/knowledge/:id", async (req, res) => {
 // ============================================================================
 //  POST /api/admin/knowledge/:id/revectorize — Generate & update vector embedding
 // ============================================================================
-app.post("/api/admin/knowledge/:id/revectorize", async (req, res) => {
+app.post("/api/admin/knowledge/:id/revectorize", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`\n🌀 Re-vectorizing knowledge entry — ID: ${id}`);
@@ -2343,13 +2388,13 @@ ai.models.list()
   });
 
 
-// Ensure system_settings is configured to use gemini-1.5-flash if it is currently set to a decommissioned/rate-limited model or is empty
+// Ensure system_settings is configured to use an active model if it is currently set to a decommissioned/rate-limited model or is empty
 supabase.from('system_settings')
   .select('active_model')
   .eq('id', 1)
   .single()
   .then(({ data, error }) => {
-    if (!error && data && (data.active_model === 'llama-3.3-70b-versatile' || data.active_model === 'gemma2-9b-it' || !data.active_model || data.active_model === 'gemini-2.0-flash-lite' || data.active_model === 'gemini-1.5-flash')) {
+    if (!error && data && (data.active_model === 'llama-3.3-70b-versatile' || data.active_model === 'gemma2-9b-it' || !data.active_model || data.active_model === 'gemini-2.0-flash-lite' || data.active_model === 'gemini-1.5-flash' || data.active_model === 'gemini-2.0-flash')) {
       console.log("  ⚠️ DB system settings is configured with rate-limited/empty model:", data.active_model);
       supabase.from('system_settings')
         .update({ active_model: 'gemini-3.5-flash' })
